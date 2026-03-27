@@ -21,6 +21,12 @@ ALLOWED_ORIGINS=https://your-site.webflow.io,https://your-domain.com
 # Teamtailor (for /api/get-job-offers)
 TEAMTAILOR_API_KEY=...
 TEAMTAILOR_COMPANY_CUSTOM_FIELD_API_ID=... # optional, needed for company filtering
+
+# Optional — Teamtailor /v1/jobs list filters (see https://docs.teamtailor.com/ )
+# Defaults on Teamtailor’s side: filter[status]=published, filter[feed]=public.
+# Use when jobs are internal-only, unlisted, etc. (may require an Internal-scoped API key).
+# TEAMTAILOR_JOBS_FILTER_STATUS=published
+# TEAMTAILOR_JOBS_FILTER_FEED=public
 ```
 
 ## Getting Started
@@ -85,7 +91,7 @@ GET https://<your-cloud-domain>/app/api/get-job-offers?company=kaiko
 Notes:
 
 - `company` matches the optional Teamtailor custom field value (`TEAMTAILOR_COMPANY_CUSTOM_FIELD_API_ID`)
-- if `company` is omitted, the API returns only offers where `company` is `null`
+- if `company` is omitted, the API returns every offer from Teamtailor (no company filter)
 
 ## Webflow script for job offers
 

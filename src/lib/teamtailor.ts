@@ -70,32 +70,67 @@ export interface JobOffer {
   company: string | null;
 }
 
-export async function fetchJobOffers(): Promise<JobOffer[]> {
-  const companyFieldId = process.env.TEAMTAILOR_COMPANY_CUSTOM_FIELD_API_ID;
+/** Max page size per Teamtailor jobs list docs (default is 10 if omitted). */
+const JOBS_PAGE_SIZE = 30;
 
-  const jobsRequest = fetch(
-    // Teamtailor doesn't accept `filter[status]=open` (400/107). In the existing Mirumee implementation
-    // they don't filter by status at the API level; the default result set maps to the job listing.
-    `${TEAMTAILOR_BASE_URL}/jobs?include=department,locations,custom-field-values`,
-    { headers: getTeamtailorHeaders() },
-  );
+interface JobsListResponse {
+  data?: TeamtailorJobRaw[];
+  links?: { next?: string | null };
+}
 
-  const customFieldRequest = companyFieldId
-    ? fetch(
-        `${TEAMTAILOR_BASE_URL}/custom-fields/${companyFieldId}?include=custom-field-values`,
-        { headers: getTeamtailorHeaders() },
-      )
-    : Promise.resolve(null);
+function buildInitialJobsUrl(): string {
+  const params = new URLSearchParams({
+    include: "department,locations,custom-field-values",
+    "page[size]": String(JOBS_PAGE_SIZE),
+    "page[number]": "1",
+  });
 
-  const [jobsResponse, customFieldResponse] = await Promise.all([jobsRequest, customFieldRequest]);
-
-  if (!jobsResponse.ok) {
-    const payload = await jobsResponse.text();
-    throw new Error(`Teamtailor jobs request failed: ${jobsResponse.status} ${payload}`);
+  // https://docs.teamtailor.com/ — list defaults: filter[status]=published, filter[feed]=public.
+  // Optional overrides when your postings are internal, unlisted, etc. (requires matching API key scope).
+  const statusFilter = process.env.TEAMTAILOR_JOBS_FILTER_STATUS?.trim();
+  const feedFilter = process.env.TEAMTAILOR_JOBS_FILTER_FEED?.trim();
+  if (statusFilter) {
+    params.set("filter[status]", statusFilter);
+  }
+  if (feedFilter) {
+    params.set("filter[feed]", feedFilter);
   }
 
-  const jobsJson = (await jobsResponse.json()) as { data?: TeamtailorJobRaw[] };
-  const jobs = jobsJson.data ?? [];
+  return `${TEAMTAILOR_BASE_URL}/jobs?${params.toString()}`;
+}
+
+async function fetchAllJobs(headers: HeadersInit): Promise<TeamtailorJobRaw[]> {
+  const jobs: TeamtailorJobRaw[] = [];
+  let url: string | null = buildInitialJobsUrl();
+
+  while (url) {
+    const response = await fetch(url, { headers });
+    if (!response.ok) {
+      const payload = await response.text();
+      throw new Error(`Teamtailor jobs request failed: ${response.status} ${payload}`);
+    }
+    const json = (await response.json()) as JobsListResponse;
+    jobs.push(...(json.data ?? []));
+    const next = json.links?.next;
+    url = next && typeof next === "string" && next.length > 0 ? next : null;
+  }
+
+  return jobs;
+}
+
+export async function fetchJobOffers(): Promise<JobOffer[]> {
+  const companyFieldId = process.env.TEAMTAILOR_COMPANY_CUSTOM_FIELD_API_ID;
+  const headers = getTeamtailorHeaders();
+
+  const [jobs, customFieldResponse] = await Promise.all([
+    fetchAllJobs(headers),
+    companyFieldId
+      ? fetch(
+          `${TEAMTAILOR_BASE_URL}/custom-fields/${companyFieldId}?include=custom-field-values`,
+          { headers },
+        )
+      : Promise.resolve(null),
+  ]);
 
   const companyByCustomFieldValueId = new Map<string, string>();
   if (companyFieldId && customFieldResponse && customFieldResponse.ok) {
