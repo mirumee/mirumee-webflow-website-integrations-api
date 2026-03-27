@@ -54,7 +54,7 @@ You can deploy your app by running [`webflow cloud deploy`](https://developers.w
 }
 ```
 
-When no `company` query is provided, it returns offers where `company` is `null` (same behavior as the current Mirumee listing).
+When no `company` query is provided, it returns all offers.
 
 ## Quick test (UI mock data)
 

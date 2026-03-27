@@ -19,9 +19,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const company = typeof req.query.company === "string" ? req.query.company.trim() : "";
     const offers = await fetchJobOffers();
 
+    // Mirror mirumee-site behavior:
+    // - no company query => return all offers
+    // - company query => return only matching offers
     const filteredOffers = company
       ? offers.filter((offer) => offer.company?.toLowerCase() === company.toLowerCase())
-      : offers.filter((offer) => offer.company === null);
+      : offers;
 
     return res.status(200).json({
       count: filteredOffers.length,
