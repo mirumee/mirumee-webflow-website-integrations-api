@@ -237,7 +237,7 @@ export async function fetchJobOffers(): Promise<JobOffer[]> {
       : Promise.resolve(null),
   ]);
 
-  let { jobs, departmentNames, locationLabels } = jobBundle;
+  const { jobs, departmentNames, locationLabels } = jobBundle;
   await enrichDepartmentNames(jobs, departmentNames);
 
   const companyByCustomFieldValueId = new Map<string, string>();
