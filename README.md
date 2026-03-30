@@ -95,7 +95,25 @@ Notes:
 
 ## Webflow script for job offers
 
-This repo now includes `public/job-offers.js` to render offers in Webflow only when offers are available.
+`public/job-offers.js` supports **CMS-first** careers pages and a **legacy** Teamtailor JSON mode.
+
+### CMS Collection list (recommended for `/careers`)
+
+1. Add custom attribute **`data-job-offers-cms`** on a parent (e.g. `find_offer_section`).
+
+2. The list wrapper must be **`[data-job-offers-list]`** or **`.job_offers_list`** and must wrap Webflow’s Collection list output.
+
+3. With **`data-job-offers-cms`**, the script **does not** call the API or change list visibility. It:
+
+   - finds each **`.w-dyn-item`** (or **`[data-job-offer-row]`** fallback) and sets **`[data-job-position]`** or **`.index_number`** to `01`, `02`, …;
+   - updates **`.index_number`** in **`[data-find-offer-section]`** / **`.find_offer_wrapper`** to the next index after the last job (empty list → `01`);
+   - if **`.all_positions_wrapper`** and department tab buttons exist, builds tabs from **`data-job-department-id`** (and optional **`data-job-department-name`**) on each row or a descendant.
+
+4. Optional: on the CMS row (e.g. link block), add custom attributes **`data-job-department-id`** and **`data-job-department-name`** bound from plain-text CMS fields for tab filtering.
+
+### API-driven markup (legacy)
+
+Use this only when **`data-job-offers-cms`** is **not** set. Requires **`[data-job-offers-list]`** and **`[data-job-offer-template]`**.
 
 Expected markup:
 
