@@ -106,7 +106,7 @@ Notes:
 3. With **`data-job-offers-cms`**, the script **does not** call the API or change list visibility. It:
 
    - finds each **`.w-dyn-item`** (or **`[data-job-offer-row]`** fallback) and sets **`[data-job-position]`** or **`.index_number`** to `01`, `02`, …;
-   - updates **`.index_number`** in **`[data-find-offer-section]`** / **`.find_offer_wrapper`** to the next index after the last job (empty list → `01`);
+   - updates **`.index_number`** outside **`.w-dyn-item`** in **`[data-find-offer-section]`**, **`.find_offer_section`**, or **`.find_offer_wrapper`** to the next index after the last job (empty list → `01`; avoids overwriting row numbers when the list sits inside the same section);
    - if **`.all_positions_wrapper`** and department tab buttons exist, builds tabs from **`data-job-department-id`** (and optional **`data-job-department-name`**) on each row or a descendant.
 
 4. Optional: on the CMS row (e.g. link block), add custom attributes **`data-job-department-id`** and **`data-job-department-name`** bound from plain-text CMS fields for tab filtering.

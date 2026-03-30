@@ -21,12 +21,8 @@
     );
   }
 
-  function findOfferSection() {
-    return (
-      document.querySelector("[data-find-offer-section]") ||
-      document.querySelector(".find_offer_wrapper") ||
-      null
-    );
+  function findOfferSectionSelectors() {
+    return "[data-find-offer-section], .find_offer_wrapper, .find_offer_section";
   }
 
   /** Webflow collection items inside the list wrapper (SSR + Editor). */
@@ -41,17 +37,29 @@
 
   function setRowIndex(row, index) {
     const positionEl =
-      row.querySelector("[data-job-position]") || row.querySelector(".index_number");
+      row.querySelector("[data-job-position]") ||
+      row.querySelector(".offer_index .index_number") ||
+      row.querySelector(".index_number");
     if (positionEl) {
       positionEl.textContent = String(index + 1).padStart(2, "0");
     }
   }
 
-  function setFindOfferIndex(findOfferEl, nextIndex) {
-    if (!findOfferEl) return;
-    const indexEl = findOfferEl.querySelector(".index_number");
-    if (!indexEl) return;
-    indexEl.textContent = String(nextIndex).padStart(2, "0");
+  /**
+   * “Can’t find an offer” blocks live in the same section as the CMS list (`find_offer_section`).
+   * Only update `.index_number` nodes that are *outside* `.w-dyn-item`, otherwise we overwrite job row numbers.
+   */
+  function setFindOfferIndex(nextIndex) {
+    const padded = String(nextIndex).padStart(2, "0");
+    const sections = document.querySelectorAll(findOfferSectionSelectors());
+    if (!sections.length) return;
+    sections.forEach((section) => {
+      section.querySelectorAll(".index_number").forEach((el) => {
+        if (!el.closest(".w-dyn-item")) {
+          el.textContent = padded;
+        }
+      });
+    });
   }
 
   function setupDepartmentTabsFromDom(listRoot, rows) {
@@ -119,17 +127,16 @@
 
   function initJobOffersCms() {
     const listRoot = queryListRoot();
-    const findOfferEl = findOfferSection();
 
     if (!listRoot) {
       console.warn("[job-offers] CMS mode: missing [data-job-offers-list] or .job_offers_list");
-      setFindOfferIndex(findOfferEl, 1);
+      setFindOfferIndex(1);
       return;
     }
 
     const rows = getCmsRows(listRoot);
     rows.forEach((row, i) => setRowIndex(row, i));
-    setFindOfferIndex(findOfferEl, rows.length > 0 ? rows.length + 1 : 1);
+    setFindOfferIndex(rows.length > 0 ? rows.length + 1 : 1);
     setupDepartmentTabsFromDom(listRoot, rows);
   }
 
@@ -137,8 +144,6 @@
     const wrapper = document.querySelector("[data-job-offers-wrapper]");
     const template = document.querySelector("[data-job-offer-template]");
     const list = document.querySelector("[data-job-offers-list]");
-    const findOfferEl = findOfferSection();
-
     if (!list || !template) {
       console.warn("[job-offers] Legacy mode: missing:", {
         "data-job-offers-list": Boolean(list),
@@ -361,7 +366,7 @@
 
       if (!offers.length) {
         list.style.display = "none";
-        setFindOfferIndex(findOfferEl, 1);
+        setFindOfferIndex(1);
         return;
       }
 
@@ -373,7 +378,7 @@
 
       offers.forEach((offer, i) => renderOffer(offer, i));
       setupDepartmentTabs(offers);
-      setFindOfferIndex(findOfferEl, offers.length + 1);
+      setFindOfferIndex(offers.length + 1);
     }
 
     if (mockJobs) {
