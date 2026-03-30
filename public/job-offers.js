@@ -1,77 +1,66 @@
 /**
- * Careers / job offers UI for Webflow.
+ * Careers page helper for Webflow.
  *
- * CMS mode (default path): add custom attribute `data-job-offers-cms` on a parent (e.g.
- * find_offer_section). The script reads Webflow’s Collection list (`.w-dyn-item` rows under
- * `[data-job-offers-list]` or `.job_offers_list`), sets row index labels, optional department
- * tabs, and the “can’t find an offer” counter. No API fetch, no toggling list visibility.
+ * CMS (use this): add `data-job-offers-cms` on a parent. Put `data-job-offers-list` on the
+ * element that wraps your Collection list. Inside each collection item, add custom attribute
+ * `data-job-position` on the small element that shows 01, 02, … (don’t bind that field in CMS).
+ * On the “Can’t find an offer?” number element add `data-find-offer-index` (value can be empty).
  *
- * Legacy mode: same page without `data-job-offers-cms` but with `[data-job-offers-list]` +
- * `[data-job-offer-template]` — fetches `/app/api/get-job-offers` and clones rows (for dev only).
- *
- * Script URL: with basePath /app → /app/job-offers.js on the app host; use full URL in Webflow embed.
+ * Legacy: no `data-job-offers-cms`, but `[data-job-offers-list]` + `[data-job-offer-template]` → fetches GET /app/api/get-job-offers.
  */
 (function () {
   const API_BASE = "/app/api";
 
-  function queryListRoot() {
+  function pad2(n) {
+    return String(n).padStart(2, "0");
+  }
+
+  function listRoot() {
     return (
-      document.querySelector("[data-job-offers-list]") ||
-      document.querySelector(".job_offers_list")
+      document.querySelector("[data-job-offers-list]") || document.querySelector(".job_offers_list")
     );
   }
 
-  function findOfferSectionSelectors() {
-    return "[data-find-offer-section], .find_offer_wrapper, .find_offer_section";
+  function cmsRows(root) {
+    return Array.from(root.querySelectorAll(".w-dyn-item"));
   }
 
-  /** Webflow collection items inside the list wrapper (SSR + Editor). */
-  function getCmsRows(listRoot) {
-    const items = listRoot.querySelectorAll(".w-dyn-item");
-    if (items.length) {
-      return Array.from(items);
-    }
-    const byAttr = listRoot.querySelectorAll("[data-job-offer-row]");
-    return byAttr.length ? Array.from(byAttr) : [];
-  }
-
-  function setRowIndex(row, index) {
-    const positionEl =
-      row.querySelector("[data-job-position]") ||
-      row.querySelector(".offer_index .index_number") ||
-      row.querySelector(".index_number");
-    if (positionEl) {
-      positionEl.textContent = String(index + 1).padStart(2, "0");
-    }
-  }
-
-  /**
-   * “Can’t find an offer” blocks live in the same section as the CMS list (`find_offer_section`).
-   * Only update `.index_number` nodes that are *outside* `.w-dyn-item`, otherwise we overwrite job row numbers.
-   */
-  function setFindOfferIndex(nextIndex) {
-    const padded = String(nextIndex).padStart(2, "0");
-    const sections = document.querySelectorAll(findOfferSectionSelectors());
-    if (!sections.length) return;
-    sections.forEach((section) => {
-      section.querySelectorAll(".index_number").forEach((el) => {
-        if (!el.closest(".w-dyn-item")) {
-          el.textContent = padded;
-        }
-      });
+  function setFindOfferNumber(n) {
+    const label = pad2(n);
+    document.querySelectorAll("[data-find-offer-index]").forEach((el) => {
+      el.textContent = label;
     });
   }
 
-  function setupDepartmentTabsFromDom(listRoot, rows) {
-    const tabsHost = document.querySelector(".all_positions_wrapper");
-    if (!tabsHost || rows.length === 0) return;
+  function initCms() {
+    const root = listRoot();
+    if (!root) {
+      console.warn("[job-offers] Add data-job-offers-list (or class job_offers_list) on the list wrapper.");
+      setFindOfferNumber(1);
+      return;
+    }
 
-    const buttons = Array.from(tabsHost.querySelectorAll(".all_positions_button"));
+    const rows = cmsRows(root);
+    rows.forEach((row, i) => {
+      const el = row.querySelector("[data-job-position]");
+      if (el) el.textContent = pad2(i + 1);
+    });
+
+    setFindOfferNumber(rows.length > 0 ? rows.length + 1 : 1);
+    setupDepartmentTabs(root, rows);
+  }
+
+  /** Optional: only runs if you use tabs + data-job-department-id on rows. */
+  function setupDepartmentTabs(listRoot, rows) {
+    const host = document.querySelector(".all_positions_wrapper");
+    if (!host || rows.length === 0) return;
+
+    const buttons = Array.from(host.querySelectorAll(".all_positions_button"));
     const tabAll = buttons[0];
-    const tabTemplate = buttons[1];
-    if (!tabAll || !tabTemplate) return;
+    const tabTpl = buttons[1];
+    if (!tabAll || !tabTpl) return;
 
-    tabsHost.querySelectorAll("[data-job-tab-dynamic]").forEach((n) => n.remove());
+    host.querySelectorAll("[data-job-tab-dynamic]").forEach((n) => n.remove());
 
     const departments = [];
     const seen = new Set();
@@ -83,81 +72,54 @@
       seen.add(id);
       departments.push({ id, name });
     });
-
     if (!departments.length) return;
 
-    const showRow = (row, show) => {
-      if (show) {
-        row.style.removeProperty("display");
-      } else {
-        row.style.setProperty("display", "none", "important");
-      }
+    const show = (row, on) => {
+      if (on) row.style.removeProperty("display");
+      else row.style.setProperty("display", "none", "important");
     };
 
-    const activateAll = () => {
+    const all = () => {
       buttons.forEach((b) => b.classList.remove("is-active"));
       tabAll.classList.add("is-active");
-      rows.forEach((row) => showRow(row, true));
+      rows.forEach((r) => show(r, true));
     };
 
-    tabAll.onclick = activateAll;
-    activateAll();
+    tabAll.onclick = all;
+    all();
 
     departments.forEach((dep) => {
-      const btn = tabTemplate.cloneNode(true);
+      const btn = tabTpl.cloneNode(true);
       btn.setAttribute("data-job-tab-dynamic", "");
       btn.removeAttribute("id");
       btn.style.display = "";
       btn.classList.remove("is-active");
-      btn.textContent = dep.name || "Department";
-
+      btn.textContent = dep.name || dep.id;
       btn.onclick = () => {
         buttons.forEach((b) => b.classList.remove("is-active"));
         btn.classList.add("is-active");
         rows.forEach((row) => {
           const el = row.querySelector("[data-job-department-id]") || row;
           const rid = el.getAttribute("data-job-department-id") || "";
-          showRow(row, rid === dep.id);
+          show(row, rid === dep.id);
         });
       };
-
-      tabsHost.insertBefore(btn, tabAll.nextSibling);
+      host.insertBefore(btn, tabAll.nextSibling);
     });
   }
 
-  function initJobOffersCms() {
-    const listRoot = queryListRoot();
-
-    if (!listRoot) {
-      console.warn("[job-offers] CMS mode: missing [data-job-offers-list] or .job_offers_list");
-      setFindOfferIndex(1);
-      return;
-    }
-
-    const rows = getCmsRows(listRoot);
-    rows.forEach((row, i) => setRowIndex(row, i));
-    setFindOfferIndex(rows.length > 0 ? rows.length + 1 : 1);
-    setupDepartmentTabsFromDom(listRoot, rows);
-  }
-
-  function initJobOffersLegacy() {
+  function initLegacy() {
     const wrapper = document.querySelector("[data-job-offers-wrapper]");
     const template = document.querySelector("[data-job-offer-template]");
     const list = document.querySelector("[data-job-offers-list]");
     if (!list || !template) {
-      console.warn("[job-offers] Legacy mode: missing:", {
-        "data-job-offers-list": Boolean(list),
-        "data-job-offer-template": Boolean(template),
-      });
+      console.warn("[job-offers] Legacy: need [data-job-offers-list] and [data-job-offer-template].");
       return;
     }
 
     const company = wrapper ? wrapper.getAttribute("data-company") : "";
     const endpoint =
-      API_BASE +
-      "/get-job-offers" +
-      (company ? "?company=" + encodeURIComponent(company) : "");
-
+      API_BASE + "/get-job-offers" + (company ? "?company=" + encodeURIComponent(company) : "");
     const mockJobs =
       (wrapper && wrapper.hasAttribute("data-mock-job-offers")) ||
       new URLSearchParams(window.location.search).get("mockJobs") === "1";
@@ -169,12 +131,12 @@
         hasOffers: true,
         offers: [
           {
-            id: "mock-backend-python",
+            id: "1",
             title: "BACKEND DEVELOPER (PYTHON)",
-            departmentId: "mock-dept-engineering",
+            departmentId: "d1",
             departmentName: "Engineering",
-            locationLabel: "Wrocław/Piła",
-            remoteLabel: "Fully Remote",
+            locationLabel: "Wrocław",
+            remoteLabel: "Remote",
             minSalary: 15000,
             maxSalary: 23000,
             currency: "PLN",
@@ -183,9 +145,9 @@
             company: null,
           },
           {
-            id: "mock-frontend-react",
-            title: "SENIOR FRONTEND DEVELOPER (REACT)",
-            departmentId: "mock-dept-engineering",
+            id: "2",
+            title: "FRONTEND DEVELOPER (REACT)",
+            departmentId: "d1",
             departmentName: "Engineering",
             locationLabel: "Warszawa",
             remoteLabel: "Hybrid",
@@ -200,112 +162,71 @@
       };
     }
 
-    function formatNumberWithSpaces(n) {
-      return String(Math.round(Number(n))).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-    }
-
     function formatSalary(offer) {
-      if (offer.salaryDisplay) {
-        return offer.salaryDisplay;
-      }
-      if (!offer.currency || (offer.minSalary == null && offer.maxSalary == null)) {
-        return "";
-      }
+      if (offer.salaryDisplay) return offer.salaryDisplay;
+      if (!offer.currency || (offer.minSalary == null && offer.maxSalary == null)) return "";
+      const fmt = (x) => String(Math.round(x)).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
       if (offer.minSalary != null && offer.maxSalary != null) {
-        return (
-          formatNumberWithSpaces(offer.minSalary) +
-          " - " +
-          formatNumberWithSpaces(offer.maxSalary) +
-          " " +
-          offer.currency
-        );
+        return fmt(offer.minSalary) + " - " + fmt(offer.maxSalary) + " " + offer.currency;
       }
-      return formatNumberWithSpaces(offer.minSalary || offer.maxSalary) + " " + offer.currency;
+      return fmt(offer.minSalary || offer.maxSalary) + " " + offer.currency;
     }
 
-    function remoteStatusLabel(status) {
-      if (status === "remote") return "Fully Remote";
-      if (status === "hybrid") return "Hybrid";
-      if (status === "none") return "";
+    function remoteLabel(s) {
+      if (s === "remote") return "Fully Remote";
+      if (s === "hybrid") return "Hybrid";
       return "";
     }
 
-    function cloneOfferRowFromTemplate(tpl) {
-      return tpl.cloneNode(true);
-    }
-
     function renderOffer(offer, index) {
-      const root = cloneOfferRowFromTemplate(template);
-      if (!root) {
-        return;
-      }
-
+      const root = template.cloneNode(true);
       root.classList.remove("w-condition-invisible");
-      root.querySelectorAll(".w-condition-invisible").forEach((n) => {
-        n.classList.remove("w-condition-invisible");
-      });
-
+      root.querySelectorAll(".w-condition-invisible").forEach((n) => n.classList.remove("w-condition-invisible"));
       root.removeAttribute("data-job-offer-template");
       root.removeAttribute("style");
-      root.style.setProperty("display", "block", "important");
-      root.style.setProperty("visibility", "visible", "important");
-      root.style.setProperty("opacity", "1", "important");
-      root.style.setProperty("pointer-events", "auto", "important");
-      root.style.setProperty("position", "static", "important");
+      root.style.cssText =
+        "display:block!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;";
 
       const deptId = offer.departmentId || "";
-      if (deptId) {
-        root.setAttribute("data-job-department-id", deptId);
-      }
+      if (deptId) root.setAttribute("data-job-department-id", deptId);
 
-      const positionEl =
+      const pos =
         root.querySelector("[data-job-position]") || root.querySelector(".index_number");
-      const titleEl =
+      const title =
         root.querySelector("[data-job-title]") || root.querySelector(".job_offer_header");
-      const salaryEl =
+      const salary =
         root.querySelector("[data-job-salary]") || root.querySelector(".offer_salary");
+      const details = root.querySelectorAll(".offer_detail");
+      const loc = root.querySelector("[data-job-location]") || details[0];
+      const rem = root.querySelector("[data-job-remote]") || details[1];
 
-      const detailEls = root.querySelectorAll(".offer_detail");
-      const locationEl =
-        root.querySelector("[data-job-location]") || detailEls[0] || null;
-      const remoteEl =
-        root.querySelector("[data-job-remote]") || detailEls[1] || null;
-
-      if (titleEl) titleEl.textContent = offer.title || "";
-      if (salaryEl) salaryEl.textContent = formatSalary(offer);
-      if (positionEl) {
-        positionEl.textContent = String(index + 1).padStart(2, "0");
-      }
-      if (locationEl) locationEl.textContent = offer.locationLabel || "";
-      if (remoteEl) {
-        remoteEl.textContent = offer.remoteLabel || remoteStatusLabel(offer.remoteStatus) || "";
-      }
+      if (title) title.textContent = offer.title || "";
+      if (salary) salary.textContent = formatSalary(offer);
+      if (pos) pos.textContent = pad2(index + 1);
+      if (loc) loc.textContent = offer.locationLabel || "";
+      if (rem) rem.textContent = offer.remoteLabel || remoteLabel(offer.remoteStatus) || "";
 
       if (offer.url) {
-        if (root.tagName === "A") {
-          root.setAttribute("href", offer.url);
-        } else {
-          const linkEl =
-            root.querySelector("[data-job-link]") || root.querySelector("a[href]");
-          if (linkEl) linkEl.setAttribute("href", offer.url);
+        if (root.tagName === "A") root.setAttribute("href", offer.url);
+        else {
+          const a = root.querySelector("[data-job-link]") || root.querySelector("a[href]");
+          if (a) a.setAttribute("href", offer.url);
         }
       }
 
       root.setAttribute("data-job-clone", "");
       list.appendChild(root);
-      if (DEBUG && mockJobs) console.debug("[job-offers] rendered", { index, title: offer.title });
+      if (DEBUG && mockJobs) console.debug("[job-offers]", offer.title);
     }
 
-    function setupDepartmentTabs(offers) {
-      const tabsHost = document.querySelector(".all_positions_wrapper");
-      if (!tabsHost) return;
-
-      const buttons = Array.from(tabsHost.querySelectorAll(".all_positions_button"));
+    function tabsFromOffers(offers) {
+      const host = document.querySelector(".all_positions_wrapper");
+      if (!host) return;
+      const buttons = Array.from(host.querySelectorAll(".all_positions_button"));
       const tabAll = buttons[0];
-      const tabTemplate = buttons[1];
-      if (!tabAll || !tabTemplate) return;
-
-      tabsHost.querySelectorAll("[data-job-tab-dynamic]").forEach((n) => n.remove());
+      const tabTpl = buttons[1];
+      if (!tabAll || !tabTpl) return;
+      host.querySelectorAll("[data-job-tab-dynamic]").forEach((n) => n.remove());
 
       const departments = [];
       const seen = new Set();
@@ -316,7 +237,6 @@
         seen.add(id);
         departments.push({ id, name });
       });
-
       if (!departments.length) return;
 
       const activateAll = () => {
@@ -326,94 +246,69 @@
           row.style.setProperty("display", "block", "important");
         });
       };
-
       tabAll.onclick = activateAll;
       activateAll();
 
       departments.forEach((dep) => {
-        const btn = tabTemplate.cloneNode(true);
+        const btn = tabTpl.cloneNode(true);
         btn.setAttribute("data-job-tab-dynamic", "");
         btn.removeAttribute("id");
         btn.style.display = "";
         btn.classList.remove("is-active");
         btn.textContent = dep.name || "Department";
-
         btn.onclick = () => {
           buttons.forEach((b) => b.classList.remove("is-active"));
           btn.classList.add("is-active");
           list.querySelectorAll("[data-job-department-id]").forEach((row) => {
             const rid = row.getAttribute("data-job-department-id") || "";
-            row.style.setProperty(
-              "display",
-              rid === dep.id ? "block" : "none",
-              "important",
-            );
+            row.style.setProperty("display", rid === dep.id ? "block" : "none", "important");
           });
         };
-
-        tabsHost.insertBefore(btn, tabAll.nextSibling);
+        host.insertBefore(btn, tabAll.nextSibling);
       });
     }
 
-    function runWithPayload(payload) {
+    function apply(payload) {
       const offers = Array.isArray(payload.offers) ? payload.offers : [];
-
-      list.querySelectorAll("[data-job-clone]").forEach((n) => {
-        n.remove();
-      });
-
-      if (DEBUG) console.debug("[job-offers] payload", { offersCount: offers.length });
+      list.querySelectorAll("[data-job-clone]").forEach((n) => n.remove());
 
       if (!offers.length) {
         list.style.display = "none";
-        setFindOfferIndex(1);
+        setFindOfferNumber(1);
         return;
       }
 
-      const displayMode = list.getAttribute("data-list-display") || "flex";
-      list.style.display = displayMode;
-      if (displayMode === "flex") {
-        list.style.flexDirection = "column";
-      }
+      const mode = list.getAttribute("data-list-display") || "flex";
+      list.style.display = mode;
+      if (mode === "flex") list.style.flexDirection = "column";
 
-      offers.forEach((offer, i) => renderOffer(offer, i));
-      setupDepartmentTabs(offers);
-      setFindOfferIndex(offers.length + 1);
+      offers.forEach((o, i) => renderOffer(o, i));
+      tabsFromOffers(offers);
+      setFindOfferNumber(offers.length + 1);
     }
 
     if (mockJobs) {
-      runWithPayload(getMockPayload());
+      apply(getMockPayload());
       return;
     }
 
     fetch(endpoint)
       .then(async (res) => {
-        if (!res.ok) {
-          const errText = await res.text();
-          let detail = errText.slice(0, 500);
-          try {
-            const parsed = JSON.parse(errText);
-            detail = parsed.error || parsed.message || detail;
-          } catch {
-            /* not JSON */
-          }
-          console.error("[job-offers] API returned error:", res.status, detail);
-          throw new Error(`get-job-offers ${res.status}: ${detail}`);
-        }
+        if (!res.ok) throw new Error(await res.text().then((t) => t.slice(0, 300)));
         return res.json();
       })
-      .then(runWithPayload)
-      .catch((error) => {
-        console.error("job-offers load error:", error.message || error);
+      .then(apply)
+      .catch((err) => {
+        console.error("[job-offers]", err);
         list.style.display = "none";
       });
   }
 
   function start() {
     if (document.querySelector("[data-job-offers-cms]")) {
-      initJobOffersCms();
+      initCms();
     } else {
-      initJobOffersLegacy();
+      initLegacy();
     }
   }
 

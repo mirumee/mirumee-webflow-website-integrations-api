@@ -99,17 +99,17 @@ Notes:
 
 ### CMS Collection list (recommended for `/careers`)
 
-1. Add custom attribute **`data-job-offers-cms`** on a parent (e.g. `find_offer_section`).
+1. Custom attribute **`data-job-offers-cms`** on a parent section.
 
-2. The list wrapper must be **`[data-job-offers-list]`** or **`.job_offers_list`** and must wrap Webflow’s Collection list output.
+2. Wrapper around the Collection list: **`data-job-offers-list`** (or class **`job_offers_list`**).
 
-3. With **`data-job-offers-cms`**, the script **does not** call the API or change list visibility. It:
+3. Inside each collection item, on the element that shows the row number only: **`data-job-position`**. Do not CMS-bind that element if the script should own the value.
 
-   - finds each **`.w-dyn-item`** (or **`[data-job-offer-row]`** fallback) and sets **`[data-job-position]`** or **`.index_number`** to `01`, `02`, …;
-   - updates **`.index_number`** outside **`.w-dyn-item`** in **`[data-find-offer-section]`**, **`.find_offer_section`**, or **`.find_offer_wrapper`** to the next index after the last job (empty list → `01`; avoids overwriting row numbers when the list sits inside the same section);
-   - if **`.all_positions_wrapper`** and department tab buttons exist, builds tabs from **`data-job-department-id`** (and optional **`data-job-department-name`**) on each row or a descendant.
+4. On the “Can’t find an offer?” number element: **`data-find-offer-index`** (value optional).
 
-4. Optional: on the CMS row (e.g. link block), add custom attributes **`data-job-department-id`** and **`data-job-department-name`** bound from plain-text CMS fields for tab filtering.
+5. Optional department tabs: **`data-job-department-id`** and **`data-job-department-name`** on each row, plus **`.all_positions_wrapper`** + **`.all_positions_button`** in the Designer.
+
+CMS mode does **not** call the API or hide the list.
 
 ### API-driven markup (legacy)
 
