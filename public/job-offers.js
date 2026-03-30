@@ -120,47 +120,6 @@
     const company = wrapper ? wrapper.getAttribute("data-company") : "";
     const endpoint =
       API_BASE + "/get-job-offers" + (company ? "?company=" + encodeURIComponent(company) : "");
-    const mockJobs =
-      (wrapper && wrapper.hasAttribute("data-mock-job-offers")) ||
-      new URLSearchParams(window.location.search).get("mockJobs") === "1";
-    const DEBUG = new URLSearchParams(window.location.search).get("debugJobOffers") === "1";
-
-    function getMockPayload() {
-      return {
-        count: 2,
-        hasOffers: true,
-        offers: [
-          {
-            id: "1",
-            title: "BACKEND DEVELOPER (PYTHON)",
-            departmentId: "d1",
-            departmentName: "Engineering",
-            locationLabel: "Wrocław",
-            remoteLabel: "Remote",
-            minSalary: 15000,
-            maxSalary: 23000,
-            currency: "PLN",
-            url: "#",
-            remoteStatus: "remote",
-            company: null,
-          },
-          {
-            id: "2",
-            title: "FRONTEND DEVELOPER (REACT)",
-            departmentId: "d1",
-            departmentName: "Engineering",
-            locationLabel: "Warszawa",
-            remoteLabel: "Hybrid",
-            minSalary: 18000,
-            maxSalary: 26000,
-            currency: "PLN",
-            url: "#",
-            remoteStatus: "hybrid",
-            company: null,
-          },
-        ],
-      };
-    }
 
     function formatSalary(offer) {
       if (offer.salaryDisplay) return offer.salaryDisplay;
@@ -203,8 +162,8 @@
       if (title) title.textContent = offer.title || "";
       if (salary) salary.textContent = formatSalary(offer);
       if (pos) pos.textContent = pad2(index + 1);
-      if (loc) loc.textContent = offer.locationLabel || "";
-      if (rem) rem.textContent = offer.remoteLabel || remoteLabel(offer.remoteStatus) || "";
+      if (loc) loc.textContent = offer.locationsLabel || "";
+      if (rem) rem.textContent = remoteLabel(offer.remoteStatus) || "";
 
       if (offer.url) {
         if (root.tagName === "A") root.setAttribute("href", offer.url);
@@ -216,7 +175,6 @@
 
       root.setAttribute("data-job-clone", "");
       list.appendChild(root);
-      if (DEBUG && mockJobs) console.debug("[job-offers]", offer.title);
     }
 
     function tabsFromOffers(offers) {
@@ -285,11 +243,6 @@
       offers.forEach((o, i) => renderOffer(o, i));
       tabsFromOffers(offers);
       setFindOfferNumber(offers.length + 1);
-    }
-
-    if (mockJobs) {
-      apply(getMockPayload());
-      return;
     }
 
     fetch(endpoint)

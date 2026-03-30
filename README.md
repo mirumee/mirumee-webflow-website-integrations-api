@@ -27,6 +27,12 @@ TEAMTAILOR_COMPANY_CUSTOM_FIELD_API_ID=... # optional, needed for company filter
 # Use when jobs are internal-only, unlisted, etc. (may require an Internal-scoped API key).
 # TEAMTAILOR_JOBS_FILTER_STATUS=published
 # TEAMTAILOR_JOBS_FILTER_FEED=public
+
+# Webflow — POST /app/api/sync-jobs (Teamtailor → CMS)
+WEBFLOW_API_TOKEN=
+WEBFLOW_JOBS_COLLECTION_ID=
+SYNC_JOBS_SECRET=
+# WEBFLOW_JOBS_FIELD_MAP={"title":"name","id":"slug","salaryDisplay":"my-salary-field"}
 ```
 
 ## Getting Started
@@ -45,10 +51,40 @@ You can deploy your app by running [`webflow cloud deploy`](https://developers.w
 
 ## API routes
 
-- `POST /api/submit-contact-form`
-- `GET /api/get-pipedrive-user?userId=123`
-- `GET /api/calendar?to=123`
-- `GET /api/get-job-offers?company=kaiko`
+Base path in production: **`/app`** (see `next.config.ts`).
+
+- `POST /app/api/submit-contact-form`
+- `GET /app/api/get-pipedrive-user?userId=123`
+- `GET /app/api/calendar?to=123`
+- `GET /app/api/get-job-offers?company=kaiko`
+- `POST /app/api/sync-jobs` — sync Teamtailor jobs into the Webflow **Jobs** collection (live items). Header **`x-sync-secret`**: value of `SYNC_JOBS_SECRET`. Optional query **`archiveMissing=1`**: archive CMS items whose slug no longer exists in Teamtailor.
+
+### Webflow Jobs collection fields
+
+Defaults in `src/lib/webflow-jobs-sync.ts` match this shape (field slug = Webflow “API name”):
+
+| Webflow field     | Slug (typical)   | Sync source |
+|-------------------|------------------|-------------|
+| Name              | `name`           | Job title   |
+| Slug              | `slug`           | TeamTailor job id (e.g. `7466842`) |
+| Department        | `department`     | Department name (from job `included` or departments list) |
+| Locations label   | `locations-label`| City / name per location from `included` |
+| Remote status     | `remote-status`  | `remote` / `hybrid` / `none` — **must match your Option choices** in Webflow |
+| Apply URL         | `apply-url`      | Link URL    |
+| TeamTailor ID     | `teamtailor-id`  | Same as job id |
+| Min / Max salary  | `min-salary`, `max-salary` | Numbers |
+| Currency          | `currency`       | Plain text  |
+
+**Description** (rich text) is not filled yet (needs a TeamTailor job-body fetch). Override or extend with **`WEBFLOW_JOBS_FIELD_MAP`** if your API names differ.
+
+Webflow token: **Data API** with **CMS:read** and **CMS:write**. [Data API docs](https://developers.webflow.com/data/reference/rest-introduction).
+
+Example:
+
+```bash
+curl -X POST 'https://<host>/app/api/sync-jobs?archiveMissing=1' \
+  -H "x-sync-secret: $SYNC_JOBS_SECRET"
+```
 
 `GET /api/get-job-offers` returns:
 
@@ -61,24 +97,6 @@ You can deploy your app by running [`webflow cloud deploy`](https://developers.w
 ```
 
 When no `company` query is provided, it returns all offers.
-
-## Quick test (UI mock data)
-
-To verify the Webflow UI wiring without calling Teamtailor, load the careers page with:
-
-- `?mockJobs=1`
-
-Example:
-
-```text
-https://<your-webflow-domain>/careers?mockJobs=1
-```
-
-When `mockJobs=1` is present, `public/job-offers.js` renders mock offers (2 roles) so you can confirm:
-
-- tabs appear
-- job rows clone/render correctly
-- “no offers” state behavior
 
 ## Quick test (real offers + company filter)
 
