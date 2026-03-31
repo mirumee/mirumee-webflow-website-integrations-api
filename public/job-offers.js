@@ -93,7 +93,7 @@
       btn.setAttribute("data-job-tab-dynamic", "");
       btn.removeAttribute("id");
       btn.style.display = "";
-      btn.classList.remove("is-active");
+      btn.classList.remove("is-active", "hide_element", "w-condition-invisible");
       btn.textContent = dep.name || dep.id;
       btn.onclick = () => {
         buttons.forEach((b) => b.classList.remove("is-active"));
@@ -212,7 +212,7 @@
         btn.setAttribute("data-job-tab-dynamic", "");
         btn.removeAttribute("id");
         btn.style.display = "";
-        btn.classList.remove("is-active");
+        btn.classList.remove("is-active", "hide_element", "w-condition-invisible");
         btn.textContent = dep.name || "Department";
         btn.onclick = () => {
           buttons.forEach((b) => b.classList.remove("is-active"));
