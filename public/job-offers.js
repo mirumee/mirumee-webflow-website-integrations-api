@@ -15,22 +15,6 @@
   injectedStyle.textContent = [
     ".jof-hidden { display: none !important; }",
     ".jof-dept-filtered .jof-last-visible .has-border-bottom { border-bottom: none !important; }",
-    "@media (max-width: 767px) {",
-    "  .all_positions_wrapper {",
-    "    width: 100% !important;",
-    "    overflow-x: auto;",
-    "    -webkit-overflow-scrolling: touch;",
-    "    flex-wrap: nowrap !important;",
-    "    scrollbar-width: none;",
-    "    -ms-overflow-style: none;",
-    "  }",
-    "  .all_positions_wrapper::-webkit-scrollbar { display: none; }",
-    "  .all_positions_wrapper .all_positions_button,",
-    "  .all_positions_wrapper [data-job-tab-dynamic] {",
-    "    flex-shrink: 0;",
-    "    white-space: nowrap;",
-    "  }",
-    "}",
   ].join("\n");
   document.head.appendChild(injectedStyle);
 
