@@ -11,6 +11,10 @@
 (function () {
   const API_BASE = "/app/api";
 
+  const hiddenStyle = document.createElement("style");
+  hiddenStyle.textContent = ".jof-hidden { display: none !important; }";
+  document.head.appendChild(hiddenStyle);
+
   function pad2(n) {
     return String(n).padStart(2, "0");
   }
@@ -76,9 +80,9 @@
 
     const findOfferSection = document.querySelector(".find_offer_section");
 
-    const show = (row, on) => {
-      if (on) row.style.removeProperty("display");
-      else row.style.setProperty("display", "none", "important");
+    const show = (el, on) => {
+      if (on) el.classList.remove("jof-hidden");
+      else el.classList.add("jof-hidden");
     };
 
     const ACTIVE_CLS = "is-button-active";
@@ -92,7 +96,7 @@
       deactivateAll();
       tabAll.classList.add(ACTIVE_CLS);
       rows.forEach((r) => show(r, true));
-      if (findOfferSection) findOfferSection.style.removeProperty("display");
+      if (findOfferSection) findOfferSection.classList.remove("jof-hidden");
     };
     deactivateAll();
     tabAll.classList.add(ACTIVE_CLS);
@@ -113,7 +117,7 @@
           const rid = el.getAttribute("data-job-department-id") || "";
           show(row, rid === dep.id);
         });
-        if (findOfferSection) findOfferSection.style.setProperty("display", "none", "important");
+        if (findOfferSection) findOfferSection.classList.add("jof-hidden");
       };
       host.insertBefore(btn, tabAll.nextSibling);
     });
@@ -219,7 +223,7 @@
         deactivateAll();
         tabAll.classList.add(ACTIVE_CLS);
         list.querySelectorAll("[data-job-department-id]").forEach((row) => {
-          row.style.setProperty("display", "block", "important");
+          row.classList.remove("jof-hidden");
         });
       };
       deactivateAll();
@@ -238,7 +242,8 @@
           btn.classList.add(ACTIVE_CLS);
           list.querySelectorAll("[data-job-department-id]").forEach((row) => {
             const rid = row.getAttribute("data-job-department-id") || "";
-            row.style.setProperty("display", rid === dep.id ? "block" : "none", "important");
+            if (rid === dep.id) row.classList.remove("jof-hidden");
+            else row.classList.add("jof-hidden");
           });
         };
         host.insertBefore(btn, tabAll.nextSibling);
