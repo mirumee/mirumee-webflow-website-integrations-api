@@ -7,7 +7,7 @@ import { syncJobOffersToWebflow } from "@/lib/webflow-jobs-sync";
  * Pull jobs from Teamtailor (same rules as /api/get-job-offers) and upsert into Webflow CMS (live).
  *
  * Auth: header x-sync-secret must equal env SYNC_JOBS_SECRET.
- * Query: archiveMissing=1 — archive Webflow items whose slug is no longer in Teamtailor.
+ * Query: skipArchive=1 — keep Webflow items whose slug is no longer in Teamtailor (default: archive them).
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
@@ -21,12 +21,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(401).json({ error: "Unauthorized" });
   }
 
-  const archiveMissing =
-    req.query.archiveMissing === "1" || req.query.archiveMissing === "true";
+  const skipArchive =
+    req.query.skipArchive === "1" || req.query.skipArchive === "true";
 
   try {
     const offers = await fetchJobOffers();
-    const result = await syncJobOffersToWebflow(offers, { archiveMissing });
+    const result = await syncJobOffersToWebflow(offers, { archiveMissing: !skipArchive });
     return res.status(200).json({ ok: true, ...result });
   } catch (error) {
     console.error("sync-jobs error:", error);
