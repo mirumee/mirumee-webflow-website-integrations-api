@@ -6,42 +6,84 @@ import { syncJobOffersToWebflow } from "@/lib/webflow-jobs-sync";
 /**
  * POST /api/sync-jobs-webhook
  *
- * Teamtailor webhook receiver for job.create / job.update / job.destroy events.
- * Verifies the `Teamtailor-Signature` header using TEAMTAILOR_WEBHOOK_SECRET,
- * then runs a full sync (same as /api/sync-jobs with archiving enabled).
+ * Teamtailor company webhook receiver for job.create / job.update / job.destroy.
+ * Verifies the TT-Signature header (v1 or v2) using TEAMTAILOR_WEBHOOK_SECRET,
+ * then runs a full sync against the Webflow CMS.
  *
- * Setup in Teamtailor: Settings → Webhooks → Add webhook
- *   URL: https://<host>/app/api/sync-jobs-webhook
+ * Setup in Teamtailor: Settings → Integrations → Webhooks → Add webhook
+ *   URL:    https://<host>/app/api/sync-jobs-webhook
  *   Events: job.create, job.update, job.destroy
+ *   Signature version: v2 (recommended) or v1
  */
 
 const REPLAY_TOLERANCE_S = 300;
 
-function verifySignature(payload: string, header: string, secret: string): boolean {
-  const parts = header.split(",");
+/**
+ * v2: TT-Signature header is base64-encoded "t=<ts>,v2=<hmac-hex>"
+ * HMAC = SHA-256(secret, "<ts>.<rawBody>")
+ */
+function verifyV2(rawBody: string, header: string, secret: string): boolean {
+  let decoded: string;
+  try {
+    decoded = Buffer.from(header, "base64").toString("utf-8");
+  } catch {
+    return false;
+  }
+
+  const parts = decoded.split(",");
   const tsEntry = parts.find((p) => p.startsWith("t="));
-  const sigEntry = parts.find((p) => p.startsWith("v1="));
+  const sigEntry = parts.find((p) => p.startsWith("v2="));
   if (!tsEntry || !sigEntry) return false;
 
   const timestamp = tsEntry.slice(2);
-  const signature = sigEntry.slice(3);
+  const received = sigEntry.slice(3);
 
   const age = Math.abs(Date.now() / 1000 - Number(timestamp));
   if (Number.isNaN(age) || age > REPLAY_TOLERANCE_S) return false;
 
   const expected = crypto
     .createHmac("sha256", secret)
-    .update(`${timestamp}.${payload}`)
+    .update(`${timestamp}.${rawBody}`)
     .digest("hex");
 
-  return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+  try {
+    return crypto.timingSafeEqual(Buffer.from(received), Buffer.from(expected));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * v1 (legacy): TT-Signature header is base64(hex(HMAC-SHA256(secret, resourceId)))
+ * resourceId comes from payload.data.id
+ */
+function verifyV1(rawBody: string, header: string, secret: string): boolean {
+  let resourceId: string;
+  try {
+    const parsed = JSON.parse(rawBody) as { payload?: { data?: { id?: unknown } } };
+    resourceId = String(parsed?.payload?.data?.id ?? "");
+  } catch {
+    return false;
+  }
+  if (!resourceId) return false;
+
+  const hmacHex = crypto.createHmac("sha256", secret).update(resourceId).digest("hex");
+  const expected = Buffer.from(hmacHex).toString("base64");
+
+  try {
+    return crypto.timingSafeEqual(Buffer.from(header), Buffer.from(expected));
+  } catch {
+    return false;
+  }
 }
 
 export const config = { api: { bodyParser: false } };
 
-async function rawBody(req: NextApiRequest): Promise<string> {
+async function readRawBody(req: NextApiRequest): Promise<string> {
   const chunks: Buffer[] = [];
-  for await (const chunk of req) chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
+  for await (const chunk of req) {
+    chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : (chunk as Buffer));
+  }
   return Buffer.concat(chunks).toString("utf-8");
 }
 
@@ -56,11 +98,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(500).json({ error: "Webhook not configured" });
   }
 
-  const body = await rawBody(req);
-  const sigHeader = req.headers["teamtailor-signature"];
+  const body = await readRawBody(req);
+
+  // Teamtailor company webhooks use the TT-Signature header
+  const sigHeader = req.headers["tt-signature"];
   const sig = Array.isArray(sigHeader) ? sigHeader[0] : sigHeader;
 
-  if (!sig || !verifySignature(body, sig, secret)) {
+  if (!sig) {
+    return res.status(401).json({ error: "Missing signature" });
+  }
+
+  const valid = verifyV2(body, sig, secret) || verifyV1(body, sig, secret);
+  if (!valid) {
     return res.status(401).json({ error: "Invalid signature" });
   }
 
