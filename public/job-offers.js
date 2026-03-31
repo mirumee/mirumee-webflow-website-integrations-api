@@ -74,39 +74,46 @@
     });
     if (!departments.length) return;
 
+    const findOfferSection = document.querySelector(".find_offer_section");
+
     const show = (row, on) => {
       if (on) row.style.removeProperty("display");
       else row.style.setProperty("display", "none", "important");
     };
 
+    const ACTIVE_CLS = "is-button-active";
+
     const deactivateAll = () => {
-      host.querySelectorAll(".all_positions_button").forEach((b) => b.classList.remove("is-active"));
+      host.querySelectorAll(".all_positions_button").forEach((b) => b.classList.remove(ACTIVE_CLS));
     };
 
     tabAll.onclick = (e) => {
       e.preventDefault();
       deactivateAll();
-      tabAll.classList.add("is-active");
+      tabAll.classList.add(ACTIVE_CLS);
       rows.forEach((r) => show(r, true));
+      if (findOfferSection) findOfferSection.style.removeProperty("display");
     };
-    tabAll.click();
+    deactivateAll();
+    tabAll.classList.add(ACTIVE_CLS);
 
     departments.forEach((dep) => {
       const btn = tabTpl.cloneNode(true);
       btn.setAttribute("data-job-tab-dynamic", "");
       btn.removeAttribute("id");
       btn.style.display = "";
-      btn.classList.remove("is-active", "hide_element", "w-condition-invisible");
+      btn.classList.remove(ACTIVE_CLS, "hide_element", "w-condition-invisible");
       btn.textContent = dep.name || dep.id;
       btn.onclick = (e) => {
         e.preventDefault();
         deactivateAll();
-        btn.classList.add("is-active");
+        btn.classList.add(ACTIVE_CLS);
         rows.forEach((row) => {
           const el = row.querySelector("[data-job-department-id]") || row;
           const rid = el.getAttribute("data-job-department-id") || "";
           show(row, rid === dep.id);
         });
+        if (findOfferSection) findOfferSection.style.setProperty("display", "none", "important");
       };
       host.insertBefore(btn, tabAll.nextSibling);
     });
@@ -201,31 +208,34 @@
       });
       if (!departments.length) return;
 
+      const ACTIVE_CLS = "is-button-active";
+
       const deactivateAll = () => {
-        host.querySelectorAll(".all_positions_button").forEach((b) => b.classList.remove("is-active"));
+        host.querySelectorAll(".all_positions_button").forEach((b) => b.classList.remove(ACTIVE_CLS));
       };
 
       tabAll.onclick = (e) => {
         e.preventDefault();
         deactivateAll();
-        tabAll.classList.add("is-active");
+        tabAll.classList.add(ACTIVE_CLS);
         list.querySelectorAll("[data-job-department-id]").forEach((row) => {
           row.style.setProperty("display", "block", "important");
         });
       };
-      tabAll.click();
+      deactivateAll();
+      tabAll.classList.add(ACTIVE_CLS);
 
       departments.forEach((dep) => {
         const btn = tabTpl.cloneNode(true);
         btn.setAttribute("data-job-tab-dynamic", "");
         btn.removeAttribute("id");
         btn.style.display = "";
-        btn.classList.remove("is-active", "hide_element", "w-condition-invisible");
+        btn.classList.remove(ACTIVE_CLS, "hide_element", "w-condition-invisible");
         btn.textContent = dep.name || "Department";
         btn.onclick = (e) => {
           e.preventDefault();
           deactivateAll();
-          btn.classList.add("is-active");
+          btn.classList.add(ACTIVE_CLS);
           list.querySelectorAll("[data-job-department-id]").forEach((row) => {
             const rid = row.getAttribute("data-job-department-id") || "";
             row.style.setProperty("display", rid === dep.id ? "block" : "none", "important");
