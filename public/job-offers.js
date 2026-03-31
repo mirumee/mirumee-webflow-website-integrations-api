@@ -18,11 +18,9 @@
     "@media (max-width: 767px) {",
     "  .all_positions_wrapper {",
     "    width: 100% !important;",
-    "    display: flex !important;",
     "    overflow-x: auto;",
     "    -webkit-overflow-scrolling: touch;",
     "    flex-wrap: nowrap !important;",
-    "    gap: 0 !important;",
     "    scrollbar-width: none;",
     "    -ms-overflow-style: none;",
     "  }",
@@ -31,16 +29,6 @@
     "  .all_positions_wrapper [data-job-tab-dynamic] {",
     "    flex-shrink: 0;",
     "    white-space: nowrap;",
-    "    background: transparent !important;",
-    "    border: none !important;",
-    "    border-radius: 0 !important;",
-    "    box-shadow: none !important;",
-    "    margin: 0 !important;",
-    "  }",
-    "  .all_positions_wrapper .all_positions_button.is-button-active,",
-    "  .all_positions_wrapper [data-job-tab-dynamic].is-button-active {",
-    "    background: rgba(255,255,255,0.15) !important;",
-    "    border-radius: 100px !important;",
     "  }",
     "}",
   ].join("\n");
@@ -68,6 +56,17 @@
         break;
       }
     }
+  }
+
+  function renumberVisibleRows(rows) {
+    var idx = 1;
+    rows.forEach(function (row) {
+      if (row.classList.contains("jof-hidden")) return;
+      var el = row.querySelector("[data-job-position]");
+      if (el) el.textContent = pad2(idx);
+      idx++;
+    });
+    setFindOfferNumber(idx);
   }
 
   function setFindOfferNumber(n) {
@@ -152,6 +151,7 @@
       rows.forEach((r) => show(r, true));
       cantFindEls.forEach((el) => show(el, true));
       listRoot.classList.remove("jof-dept-filtered");
+      renumberVisibleRows(rows);
       markLastVisible(rows);
     };
     deactivateAll();
@@ -187,6 +187,7 @@
         });
         cantFindEls.forEach((el) => show(el, false));
         listRoot.classList.add("jof-dept-filtered");
+        renumberVisibleRows(rows);
         markLastVisible(rows);
       };
       host.insertBefore(btn, tabAll.nextSibling);
