@@ -54,6 +54,28 @@
     setupDepartmentTabs(root, rows);
   }
 
+  /**
+   * Collect "Can't find an offer?" link elements — the direct-child .offer_link
+   * siblings of the CMS list inside .find_offer_section.
+   */
+  function collectCantFindEls() {
+    var section = document.querySelector(".find_offer_section");
+    if (!section) return [];
+    var found = [];
+    var seen = new Set();
+    document.querySelectorAll("[data-find-offer-index]").forEach(function (el) {
+      var node = el;
+      while (node.parentElement && node.parentElement !== section) {
+        node = node.parentElement;
+      }
+      if (node.parentElement === section && !seen.has(node)) {
+        seen.add(node);
+        found.push(node);
+      }
+    });
+    return found;
+  }
+
   /** Optional: only runs if you use tabs + data-job-department-id on rows. */
   function setupDepartmentTabs(listRoot, rows) {
     const host = document.querySelector(".all_positions_wrapper");
@@ -68,7 +90,7 @@
 
     host.querySelectorAll("[data-job-tab-dynamic]").forEach((n) => n.remove());
 
-    const findOfferSection = document.querySelector(".find_offer_section");
+    const cantFindEls = collectCantFindEls();
 
     const show = (el, on) => {
       if (on) el.classList.remove("jof-hidden");
@@ -86,7 +108,7 @@
       deactivateAll();
       tabAll.classList.add(ACTIVE_CLS);
       rows.forEach((r) => show(r, true));
-      if (findOfferSection) findOfferSection.classList.remove("jof-hidden");
+      cantFindEls.forEach((el) => show(el, true));
     };
     deactivateAll();
     tabAll.classList.add(ACTIVE_CLS);
@@ -119,7 +141,7 @@
           const rid = el.getAttribute("data-job-department-id") || "";
           show(row, rid === dep.id);
         });
-        if (findOfferSection) findOfferSection.classList.add("jof-hidden");
+        cantFindEls.forEach((el) => show(el, false));
       };
       host.insertBefore(btn, tabAll.nextSibling);
     });
@@ -220,6 +242,8 @@
         host.querySelectorAll(".all_positions_button").forEach((b) => b.classList.remove(ACTIVE_CLS));
       };
 
+      const cantFindEls = collectCantFindEls();
+
       tabAll.onclick = (e) => {
         e.preventDefault();
         deactivateAll();
@@ -227,6 +251,7 @@
         list.querySelectorAll("[data-job-department-id]").forEach((row) => {
           row.classList.remove("jof-hidden");
         });
+        cantFindEls.forEach((el) => el.classList.remove("jof-hidden"));
       };
       deactivateAll();
       tabAll.classList.add(ACTIVE_CLS);
@@ -247,6 +272,7 @@
             if (rid === dep.id) row.classList.remove("jof-hidden");
             else row.classList.add("jof-hidden");
           });
+          cantFindEls.forEach((el) => el.classList.add("jof-hidden"));
         };
         host.insertBefore(btn, tabAll.nextSibling);
       });
