@@ -15,6 +15,15 @@
   injectedStyle.textContent = [
     ".jof-hidden { display: none !important; }",
     ".jof-dept-filtered .jof-last-visible .has-border-bottom { border-bottom: none !important; }",
+    "@media (max-width: 767px) {",
+    "  .all_positions_wrapper .all_positions_button:not(.jof-hidden),",
+    "  .all_positions_wrapper [data-job-tab-dynamic] {",
+    "    background-color: transparent !important;",
+    "    border-radius: 0 !important;",
+    "    border: none !important;",
+    "    box-shadow: none !important;",
+    "  }",
+    "}",
   ].join("\n");
   document.head.appendChild(injectedStyle);
 
