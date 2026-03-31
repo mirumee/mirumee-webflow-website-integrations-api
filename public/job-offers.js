@@ -11,9 +11,27 @@
 (function () {
   const API_BASE = "/app/api";
 
-  const hiddenStyle = document.createElement("style");
-  hiddenStyle.textContent = ".jof-hidden { display: none !important; }";
-  document.head.appendChild(hiddenStyle);
+  const injectedStyle = document.createElement("style");
+  injectedStyle.textContent = [
+    ".jof-hidden { display: none !important; }",
+    ".jof-last-visible .has-border-bottom { border-bottom: none !important; }",
+    "@media (max-width: 767px) {",
+    "  .all_positions_wrapper {",
+    "    overflow-x: auto;",
+    "    -webkit-overflow-scrolling: touch;",
+    "    flex-wrap: nowrap !important;",
+    "    scrollbar-width: none;",
+    "    -ms-overflow-style: none;",
+    "  }",
+    "  .all_positions_wrapper::-webkit-scrollbar { display: none; }",
+    "  .all_positions_wrapper .all_positions_button,",
+    "  .all_positions_wrapper [data-job-tab-dynamic] {",
+    "    flex-shrink: 0;",
+    "    white-space: nowrap;",
+    "  }",
+    "}",
+  ].join("\n");
+  document.head.appendChild(injectedStyle);
 
   function pad2(n) {
     return String(n).padStart(2, "0");
@@ -27,6 +45,16 @@
 
   function cmsRows(root) {
     return Array.from(root.querySelectorAll(".w-dyn-item"));
+  }
+
+  function markLastVisible(rows) {
+    rows.forEach((r) => r.classList.remove("jof-last-visible"));
+    for (var i = rows.length - 1; i >= 0; i--) {
+      if (!rows[i].classList.contains("jof-hidden")) {
+        rows[i].classList.add("jof-last-visible");
+        break;
+      }
+    }
   }
 
   function setFindOfferNumber(n) {
@@ -51,6 +79,7 @@
     });
 
     setFindOfferNumber(rows.length > 0 ? rows.length + 1 : 1);
+    markLastVisible(rows);
     setupDepartmentTabs(root, rows);
   }
 
@@ -109,6 +138,7 @@
       tabAll.classList.add(ACTIVE_CLS);
       rows.forEach((r) => show(r, true));
       cantFindEls.forEach((el) => show(el, true));
+      markLastVisible(rows);
     };
     deactivateAll();
     tabAll.classList.add(ACTIVE_CLS);
@@ -142,6 +172,7 @@
           show(row, rid === dep.id);
         });
         cantFindEls.forEach((el) => show(el, false));
+        markLastVisible(rows);
       };
       host.insertBefore(btn, tabAll.nextSibling);
     });
