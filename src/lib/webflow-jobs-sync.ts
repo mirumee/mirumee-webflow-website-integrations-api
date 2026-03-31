@@ -25,9 +25,9 @@ export function formatSalaryDisplay(offer: JobOffer): string {
 }
 
 /**
- * Maps internal keys → Webflow field slugs (CMS → field → API name in sidebar).
+ * Maps internal keys -> Webflow field slugs (CMS -> field -> API name in sidebar).
  * Default matches a Jobs collection with: Name, Slug, Department, Locations label,
- * Remote status (Option), Apply URL (Link), TeamTailor ID, Description, Min/Max salary, Currency.
+ * Remote status, Apply URL (Link), TeamTailor ID, Description (Rich text), Min/Max salary, Currency.
  */
 function fieldSlugMap(): Record<string, string> {
   const raw = process.env.WEBFLOW_JOBS_FIELD_MAP?.trim();
@@ -46,6 +46,7 @@ function fieldSlugMap(): Record<string, string> {
     remoteStatus: "remote-status",
     applyUrl: "apply-url",
     teamtailorId: "teamtailor-id",
+    descriptionHtml: "description",
     minSalary: "min-salary",
     maxSalary: "max-salary",
     currency: "currency",
@@ -64,6 +65,7 @@ function buildFieldData(offer: JobOffer): Record<string, unknown> {
     remoteStatus: offer.remoteStatus,
     applyUrl: (offer.applyUrl ?? "").trim(),
     teamtailorId: offer.id,
+    descriptionHtml: offer.descriptionHtml,
     minSalary: offer.minSalary,
     maxSalary: offer.maxSalary,
     currency: offer.currency ?? "",
@@ -89,6 +91,11 @@ function buildFieldData(offer: JobOffer): Record<string, unknown> {
     }
 
     if (internalKey === "applyUrl" && typeof v === "string") {
+      fieldData[webflowSlug] = v;
+      continue;
+    }
+
+    if (internalKey === "descriptionHtml" && typeof v === "string") {
       fieldData[webflowSlug] = v;
       continue;
     }

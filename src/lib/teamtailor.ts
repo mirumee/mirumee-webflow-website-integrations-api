@@ -27,6 +27,10 @@ interface TeamtailorJobRaw {
   id: string;
   attributes: {
     title: string;
+    /** Job ad HTML from Teamtailor (primary long description). */
+    body?: string | null;
+    /** Short intro / teaser; used when `body` is empty. */
+    pitch?: string | null;
     "remote-status"?: "none" | "hybrid" | "remote";
     "min-salary"?: number | null;
     "max-salary"?: number | null;
@@ -78,6 +82,8 @@ export interface JobOffer {
   locationsLabel: string;
   url: string | null;
   applyUrl: string | null;
+  /** HTML for Webflow rich text / description field (from `body` or `pitch`). */
+  descriptionHtml: string | null;
   remoteStatus: "none" | "hybrid" | "remote";
   minSalary: number | null;
   maxSalary: number | null;
@@ -270,6 +276,12 @@ export async function fetchJobOffers(): Promise<JobOffer[]> {
       ? locationIds.map((id) => locationLabels.get(id) ?? id).join(", ")
       : "";
 
+    const rawBody = job.attributes.body;
+    const rawPitch = job.attributes.pitch;
+    const descriptionHtml =
+      (typeof rawBody === "string" && rawBody.trim() ? rawBody.trim() : null) ??
+      (typeof rawPitch === "string" && rawPitch.trim() ? rawPitch.trim() : null);
+
     return {
       id: job.id,
       title: job.attributes.title,
@@ -279,6 +291,7 @@ export async function fetchJobOffers(): Promise<JobOffer[]> {
       locationsLabel,
       url: job.links?.["careersite-job-url"] ?? null,
       applyUrl: job.links?.["careersite-job-apply-url"] ?? null,
+      descriptionHtml,
       remoteStatus: job.attributes["remote-status"] ?? "none",
       minSalary: job.attributes["min-salary"] ?? null,
       maxSalary: job.attributes["max-salary"] ?? null,
