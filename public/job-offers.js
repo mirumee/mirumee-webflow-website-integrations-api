@@ -17,7 +17,7 @@
     ".jof-dept-filtered .jof-last-visible .has-border-bottom { border-bottom: none !important; }",
     "@media (max-width: 767px) {",
     "  .all_positions_wrapper {",
-    "    background-color: var(--color, #1a1a1a) !important;",
+    "    background-color: #000 !important;",
     "    border-radius: 100px !important;",
     "    padding: 4px !important;",
     "  }",
