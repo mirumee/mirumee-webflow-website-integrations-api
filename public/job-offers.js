@@ -15,23 +15,36 @@
   injectedStyle.textContent = [
     ".jof-hidden { display: none !important; }",
     ".jof-dept-filtered .jof-last-visible .has-border-bottom { border-bottom: none !important; }",
-    "@media (max-width: 767px) {",
-    "  .all_positions_wrapper {",
-    "    background-color: #000 !important;",
-    "    border-radius: 100px !important;",
-    "    padding: 4px !important;",
+    ".jof-tabs-bar { display: contents; }",
+    "@media (max-width: 991px) {",
+    "  .jof-tabs-bar {",
+    "    display: flex !important;",
+    "    flex-wrap: nowrap;",
+    "    align-items: center;",
+    "    background: #000;",
+    "    border-radius: 100px;",
+    "    padding: 4px;",
+    "    overflow-x: auto;",
+    "    -webkit-overflow-scrolling: touch;",
+    "    scrollbar-width: none;",
+    "    width: 100%;",
     "  }",
-    "  .all_positions_wrapper .all_positions_button:not(.jof-hidden),",
-    "  .all_positions_wrapper [data-job-tab-dynamic] {",
-    "    background-color: transparent !important;",
-    "    border-radius: 0 !important;",
+    "  .jof-tabs-bar::-webkit-scrollbar { display: none; }",
+    "  .jof-tabs-bar .all_positions_button,",
+    "  .jof-tabs-bar [data-job-tab-dynamic] {",
+    "    flex-shrink: 0;",
+    "    white-space: nowrap;",
+    "    background: transparent !important;",
     "    border: none !important;",
+    "    border-radius: 0 !important;",
     "    box-shadow: none !important;",
-    "    color: var(--foreground, #fff) !important;",
+    "    color: #fff !important;",
+    "    padding: 8px 16px;",
+    "    margin: 0 !important;",
     "  }",
-    "  .all_positions_wrapper .all_positions_button.is-button-active:not(.jof-hidden),",
-    "  .all_positions_wrapper [data-job-tab-dynamic].is-button-active {",
-    "    background-color: rgba(255,255,255,0.15) !important;",
+    "  .jof-tabs-bar .all_positions_button.is-button-active,",
+    "  .jof-tabs-bar [data-job-tab-dynamic].is-button-active {",
+    "    background: rgba(255,255,255,0.15) !important;",
     "    border-radius: 100px !important;",
     "  }",
     "}",
@@ -173,6 +186,15 @@
     });
     if (!departments.length) return;
 
+    var bar = host.querySelector(".jof-tabs-bar");
+    if (!bar) {
+      bar = document.createElement("div");
+      bar.className = "jof-tabs-bar";
+      host.appendChild(bar);
+    }
+
+    bar.appendChild(tabAll);
+
     departments.forEach((dep) => {
       const btn = tabTpl.cloneNode(true);
       btn.setAttribute("data-job-tab-dynamic", "");
@@ -194,7 +216,7 @@
         renumberVisibleRows(rows);
         markLastVisible(rows);
       };
-      host.insertBefore(btn, tabAll.nextSibling);
+      bar.appendChild(btn);
     });
   }
 
