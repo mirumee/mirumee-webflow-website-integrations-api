@@ -43,7 +43,7 @@ function fieldSlugMap(): Record<string, string> {
     id: "slug",
     department: "department",
     locationsLabel: "locations-label",
-    remoteStatus: "remote-status",
+    remoteStatus: "remote-status-2",
     applyUrl: "apply-url",
     teamtailorId: "teamtailor-id",
     descriptionHtml: "description",
