@@ -79,14 +79,17 @@
       else row.style.setProperty("display", "none", "important");
     };
 
-    const all = () => {
-      buttons.forEach((b) => b.classList.remove("is-active"));
+    const deactivateAll = () => {
+      host.querySelectorAll(".all_positions_button").forEach((b) => b.classList.remove("is-active"));
+    };
+
+    tabAll.onclick = (e) => {
+      e.preventDefault();
+      deactivateAll();
       tabAll.classList.add("is-active");
       rows.forEach((r) => show(r, true));
     };
-
-    tabAll.onclick = all;
-    all();
+    tabAll.click();
 
     departments.forEach((dep) => {
       const btn = tabTpl.cloneNode(true);
@@ -95,8 +98,9 @@
       btn.style.display = "";
       btn.classList.remove("is-active", "hide_element", "w-condition-invisible");
       btn.textContent = dep.name || dep.id;
-      btn.onclick = () => {
-        buttons.forEach((b) => b.classList.remove("is-active"));
+      btn.onclick = (e) => {
+        e.preventDefault();
+        deactivateAll();
         btn.classList.add("is-active");
         rows.forEach((row) => {
           const el = row.querySelector("[data-job-department-id]") || row;
@@ -197,15 +201,19 @@
       });
       if (!departments.length) return;
 
-      const activateAll = () => {
-        buttons.forEach((b) => b.classList.remove("is-active"));
+      const deactivateAll = () => {
+        host.querySelectorAll(".all_positions_button").forEach((b) => b.classList.remove("is-active"));
+      };
+
+      tabAll.onclick = (e) => {
+        e.preventDefault();
+        deactivateAll();
         tabAll.classList.add("is-active");
         list.querySelectorAll("[data-job-department-id]").forEach((row) => {
           row.style.setProperty("display", "block", "important");
         });
       };
-      tabAll.onclick = activateAll;
-      activateAll();
+      tabAll.click();
 
       departments.forEach((dep) => {
         const btn = tabTpl.cloneNode(true);
@@ -214,8 +222,9 @@
         btn.style.display = "";
         btn.classList.remove("is-active", "hide_element", "w-condition-invisible");
         btn.textContent = dep.name || "Department";
-        btn.onclick = () => {
-          buttons.forEach((b) => b.classList.remove("is-active"));
+        btn.onclick = (e) => {
+          e.preventDefault();
+          deactivateAll();
           btn.classList.add("is-active");
           list.querySelectorAll("[data-job-department-id]").forEach((row) => {
             const rid = row.getAttribute("data-job-department-id") || "";
