@@ -64,19 +64,9 @@
     const tabTpl = buttons[1];
     if (!tabAll || !tabTpl) return;
 
-    host.querySelectorAll("[data-job-tab-dynamic]").forEach((n) => n.remove());
+    tabTpl.classList.add("jof-hidden");
 
-    const departments = [];
-    const seen = new Set();
-    rows.forEach((item) => {
-      const el = item.querySelector("[data-job-department-id]") || item;
-      const id = el.getAttribute("data-job-department-id") || "";
-      const name = el.getAttribute("data-job-department-name") || id;
-      if (!id || seen.has(id)) return;
-      seen.add(id);
-      departments.push({ id, name });
-    });
-    if (!departments.length) return;
+    host.querySelectorAll("[data-job-tab-dynamic]").forEach((n) => n.remove());
 
     const findOfferSection = document.querySelector(".find_offer_section");
 
@@ -101,12 +91,24 @@
     deactivateAll();
     tabAll.classList.add(ACTIVE_CLS);
 
+    const departments = [];
+    const seen = new Set();
+    rows.forEach((item) => {
+      const el = item.querySelector("[data-job-department-id]") || item;
+      const id = el.getAttribute("data-job-department-id") || "";
+      const name = el.getAttribute("data-job-department-name") || id;
+      if (!id || seen.has(id)) return;
+      seen.add(id);
+      departments.push({ id, name });
+    });
+    if (!departments.length) return;
+
     departments.forEach((dep) => {
       const btn = tabTpl.cloneNode(true);
       btn.setAttribute("data-job-tab-dynamic", "");
       btn.removeAttribute("id");
       btn.style.display = "";
-      btn.classList.remove(ACTIVE_CLS, "hide_element", "w-condition-invisible");
+      btn.classList.remove(ACTIVE_CLS, "hide_element", "w-condition-invisible", "jof-hidden");
       btn.textContent = dep.name || dep.id;
       btn.onclick = (e) => {
         e.preventDefault();
