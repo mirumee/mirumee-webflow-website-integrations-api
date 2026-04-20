@@ -56,13 +56,22 @@
   }
 
   function listRoot() {
-    return (
-      document.querySelector("[data-job-offers-list]") || document.querySelector(".job_offers_list")
-    );
+    const el =
+      document.querySelector("[data-job-offers-list]") ||
+      document.querySelector(".job_offers_list");
+    if (!el) return null;
+    if (el.querySelector(".w-dyn-item")) return el;
+    const list = el.closest(".w-dyn-list") || el.closest(".w-dyn-items");
+    return list || el;
   }
 
   function cmsRows(root) {
-    return Array.from(root.querySelectorAll(".w-dyn-item"));
+    let items = Array.from(root.querySelectorAll(".w-dyn-item"));
+    if (items.length === 0) {
+      const list = root.closest(".w-dyn-list") || root.closest(".w-dyn-items");
+      if (list) items = Array.from(list.querySelectorAll(".w-dyn-item"));
+    }
+    return items;
   }
 
   function markLastVisible(rows) {
@@ -93,6 +102,17 @@
     });
   }
 
+  function applyCmsNumbering(root) {
+    const rows = cmsRows(root);
+    rows.forEach((row, i) => {
+      const el = row.querySelector("[data-job-position]");
+      if (el) el.textContent = pad2(i + 1);
+    });
+    setFindOfferNumber(rows.length > 0 ? rows.length + 1 : 1);
+    markLastVisible(rows);
+    return rows;
+  }
+
   function initCms() {
     const root = listRoot();
     if (!root) {
@@ -101,15 +121,36 @@
       return;
     }
 
-    const rows = cmsRows(root);
-    rows.forEach((row, i) => {
-      const el = row.querySelector("[data-job-position]");
-      if (el) el.textContent = pad2(i + 1);
-    });
-
-    setFindOfferNumber(rows.length > 0 ? rows.length + 1 : 1);
-    markLastVisible(rows);
+    let rows = applyCmsNumbering(root);
     setupDepartmentTabs(root, rows);
+
+    let applying = false;
+    const reapply = () => {
+      if (applying) return;
+      applying = true;
+      try {
+        const current = cmsRows(root);
+        const want = pad2(current.length > 0 ? current.length + 1 : 1);
+        if (current.length !== rows.length) {
+          rows = applyCmsNumbering(root);
+        } else {
+          document.querySelectorAll("[data-find-offer-index]").forEach((el) => {
+            if (el.textContent !== want) el.textContent = want;
+          });
+        }
+      } finally {
+        applying = false;
+      }
+    };
+
+    const section = root.closest(".find_offer_section") || document.body;
+    const observer = new MutationObserver(reapply);
+    observer.observe(section, { childList: true, subtree: true, characterData: true });
+
+    window.addEventListener("load", reapply);
+    if (window.Webflow && typeof window.Webflow.push === "function") {
+      window.Webflow.push(reapply);
+    }
   }
 
   /**
