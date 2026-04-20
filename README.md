@@ -26,7 +26,7 @@ Base path in production: **`/app`** (see `next.config.ts`).
 - `GET /app/api/get-pipedrive-user?userId=123`
 - `GET /app/api/calendar?to=123`
 - `GET /app/api/get-job-offers?company=kaiko`
-- `POST /app/api/sync-jobs` — sync Teamtailor jobs into the Webflow **Jobs** collection (live items). Header **`x-sync-secret`**: value of `SYNC_JOBS_SECRET`. Query **`skipArchive=1`** to keep Webflow items whose slug is no longer in Teamtailor (default: archive them).
+- `POST /app/api/sync-jobs` — sync Teamtailor jobs into the Webflow **Jobs** collection (live items). Header **`x-sync-secret`**: value of `SYNC_JOBS_SECRET`. Query **`skipArchive=1`** to keep Webflow items whose slug is no longer in Teamtailor (default: archive them). Called every 10 min by the GitHub Action in `.github/workflows/sync-jobs.yml` — see [Scheduled sync](#scheduled-sync).
 
 ### Webflow Jobs collection fields
 
@@ -55,6 +55,33 @@ Example:
 curl -X POST 'https://<host>/app/api/sync-jobs' \
   -H "x-sync-secret: $SYNC_JOBS_SECRET"
 ```
+
+## Scheduled sync
+
+Teamtailor does not push changes to us; instead a GitHub Action calls `POST /app/api/sync-jobs` on a schedule. The sync fetches jobs live from the Teamtailor REST API (`fetchJobOffers` in `src/lib/teamtailor.ts`) and upserts/archives Webflow CMS items accordingly.
+
+Workflow: [`.github/workflows/sync-jobs.yml`](.github/workflows/sync-jobs.yml)
+
+- Cron: every 10 minutes (`*/10 * * * *`). GitHub Actions has a 5-min floor and deliveries can lag up to ~15 min under load.
+- Manual run: Actions → **Sync Teamtailor jobs to Webflow** → **Run workflow**.
+- Optional input `skip_archive` on manual runs — keep Webflow items whose slug is no longer in Teamtailor.
+
+Required GitHub config (Settings → Secrets and variables → Actions):
+
+| Kind     | Name                | Value                                              |
+|----------|---------------------|----------------------------------------------------|
+| Secret   | `SYNC_JOBS_SECRET`  | Same value as `SYNC_JOBS_SECRET` in production env |
+| Variable | `SYNC_JOBS_URL`     | `https://<host>/app/api/sync-jobs`                 |
+
+Behaviour:
+
+- New job in Teamtailor → `created: 1` on next run, item appears in Webflow CMS.
+- Field change (title, body, salary, department, location, remote status…) → `updated: 1`, item updated.
+- Unlist / archive / delete in Teamtailor → `archived: 1`, item moved to Webflow's Archived tab.
+
+Visitors see updates only after the Webflow **site** is published. Item-level publish is already done by the sync (it uses `/items/live`), but the public site cache needs a site publish to refresh.
+
+## API reference
 
 `GET /api/get-job-offers` returns:
 
