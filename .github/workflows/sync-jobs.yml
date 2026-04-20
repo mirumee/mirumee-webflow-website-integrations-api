@@ -1,0 +1,69 @@
+name: Sync Teamtailor jobs to Webflow
+
+on:
+  schedule:
+    # Every 10 minutes. GitHub Actions cron granularity is 5 min minimum
+    # and deliveries can lag up to ~15 min during heavy load.
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+    inputs:
+      skip_archive:
+        description: "Keep Webflow items whose slug is no longer in Teamtailor"
+        type: boolean
+        default: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    concurrency:
+      group: sync-jobs
+      cancel-in-progress: false
+    steps:
+      - name: Call /api/sync-jobs
+        env:
+          SYNC_JOBS_URL: ${{ vars.SYNC_JOBS_URL }}
+          SYNC_JOBS_SECRET: ${{ secrets.SYNC_JOBS_SECRET }}
+          SKIP_ARCHIVE: ${{ inputs.skip_archive && '1' || '' }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${SYNC_JOBS_URL:-}" ]; then
+            echo "::error::Set repo variable SYNC_JOBS_URL (e.g. https://commerce.mirumee.com/app/api/sync-jobs)"
+            exit 1
+          fi
+          if [ -z "${SYNC_JOBS_SECRET:-}" ]; then
+            echo "::error::Set repo secret SYNC_JOBS_SECRET"
+            exit 1
+          fi
+
+          URL="$SYNC_JOBS_URL"
+          if [ -n "$SKIP_ARCHIVE" ]; then
+            URL="${URL}?skipArchive=1"
+          fi
+
+          echo "POST $URL"
+          http_code=$(curl -sS -o response.json -w "%{http_code}" \
+            -X POST "$URL" \
+            -H "x-sync-secret: $SYNC_JOBS_SECRET" \
+            --max-time 120)
+
+          echo "status: $http_code"
+          echo "body:"
+          cat response.json
+          echo
+
+          if [ "$http_code" != "200" ]; then
+            echo "::error::Sync failed with status $http_code"
+            exit 1
+          fi
+
+          # Emit a nice summary on the run page
+          {
+            echo "### Sync result"
+            echo ""
+            echo "\`\`\`json"
+            cat response.json
+            echo ""
+            echo "\`\`\`"
+          } >> "$GITHUB_STEP_SUMMARY"
