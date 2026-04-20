@@ -31,6 +31,8 @@ interface TeamtailorJobRaw {
     body?: string | null;
     /** Short intro / teaser; used when `body` is empty. */
     pitch?: string | null;
+    /** TT job status on the `attributes` resource. Observed values: "open", "unlisted", "archived", "draft". */
+    status?: string | null;
     "remote-status"?: "none" | "hybrid" | "remote";
     "min-salary"?: number | null;
     "max-salary"?: number | null;
@@ -132,22 +134,29 @@ function mergeIncludedIntoMaps(
 }
 
 function buildInitialJobsUrl(): string {
+  // Note: TT's `filter[status]` / `filter[feed]` query params are unreliable on
+  // the v1 API (observed 0 results even when a matching job exists). We fetch
+  // all jobs and filter client-side on `attributes.status` below.
   const params = new URLSearchParams({
     include: "department,locations,custom-field-values",
     "page[size]": String(JOBS_PAGE_SIZE),
     "page[number]": "1",
   });
-
-  const statusFilter = process.env.TEAMTAILOR_JOBS_FILTER_STATUS?.trim();
-  const feedFilter = process.env.TEAMTAILOR_JOBS_FILTER_FEED?.trim();
-  if (statusFilter) {
-    params.set("filter[status]", statusFilter);
-  }
-  if (feedFilter) {
-    params.set("filter[feed]", feedFilter);
-  }
-
   return `${TEAMTAILOR_BASE_URL}/jobs?${params.toString()}`;
+}
+
+/**
+ * Status values considered publicly visible. Override via
+ * TEAMTAILOR_JOBS_ALLOWED_STATUSES (comma-separated, e.g. "open,unlisted").
+ */
+function allowedJobStatuses(): Set<string> {
+  const raw = process.env.TEAMTAILOR_JOBS_ALLOWED_STATUSES?.trim() || "open";
+  return new Set(
+    raw
+      .split(",")
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean),
+  );
 }
 
 async function fetchAllJobsWithIncluded(
@@ -246,6 +255,12 @@ export async function fetchJobOffers(): Promise<JobOffer[]> {
   const { jobs, departmentNames, locationLabels } = jobBundle;
   await enrichDepartmentNames(jobs, departmentNames);
 
+  const allowed = allowedJobStatuses();
+  const visibleJobs = jobs.filter((job) => {
+    const status = job.attributes.status?.toLowerCase();
+    return status ? allowed.has(status) : false;
+  });
+
   const companyByCustomFieldValueId = new Map<string, string>();
   if (companyFieldId && customFieldResponse && customFieldResponse.ok) {
     const customFieldJson = (await customFieldResponse.json()) as {
@@ -260,7 +275,7 @@ export async function fetchJobOffers(): Promise<JobOffer[]> {
     }
   }
 
-  return jobs.map((job) => {
+  return visibleJobs.map((job) => {
     const customFieldRefs = job.relationships["custom-field-values"]?.data ?? [];
     const company =
       customFieldRefs
