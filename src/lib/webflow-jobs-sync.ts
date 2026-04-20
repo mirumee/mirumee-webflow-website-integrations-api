@@ -175,9 +175,17 @@ async function updateLiveItems(
   collectionId: string,
   patches: Array<{ id: string; fieldData: Record<string, unknown> }>,
 ) {
+  // isArchived/isDraft set to false on every update so republishing a job in
+  // Teamtailor revives a previously-archived Webflow item instead of leaving
+  // it hidden.
+  const items = patches.map((p) => ({
+    ...p,
+    isArchived: false,
+    isDraft: false,
+  }));
   const res = await webflowFetch(`/collections/${collectionId}/items/live`, {
     method: "PATCH",
-    body: JSON.stringify({ items: patches }),
+    body: JSON.stringify({ items }),
   });
   if (!res.ok) {
     throw new Error(`Webflow update live items ${res.status}: ${await res.text()}`);
