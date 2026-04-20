@@ -32,18 +32,18 @@ Base path in production: **`/app`** (see `next.config.ts`).
 
 Defaults in `src/lib/webflow-jobs-sync.ts` match this shape (field slug = Webflow "API name"):
 
-| Webflow field     | Slug (typical)     | Sync source |
-|-------------------|--------------------|-------------|
-| Name              | `name`             | Job title   |
-| Slug              | `slug`             | TeamTailor job id (e.g. `7466842`) |
-| Department        | `department`        | Department name (from job `included` or departments list) |
-| Locations label   | `locations-label`   | City / name per location from `included` |
-| Remote status     | `remote-status-2`   | `remote` / `hybrid` / `none` (plain text) |
-| Apply URL         | `apply-url`         | Link URL    |
-| TeamTailor ID     | `teamtailor-id`     | Same as job id |
-| Description       | `description`       | Job body HTML from Teamtailor (falls back to pitch) |
-| Min / Max salary  | `min-salary`, `max-salary` | Numbers |
-| Currency          | `currency`          | Plain text  |
+| Webflow field    | Slug (typical)             | Sync source                                               |
+| ---------------- | -------------------------- | --------------------------------------------------------- |
+| Name             | `name`                     | Job title                                                 |
+| Slug             | `slug`                     | TeamTailor job id (e.g. `7466842`)                        |
+| Department       | `department`               | Department name (from job `included` or departments list) |
+| Locations label  | `locations-label`          | City / name per location from `included`                  |
+| Remote status    | `remote-status-2`          | `remote` / `hybrid` / `none` (plain text)                 |
+| Apply URL        | `apply-url`                | Link URL                                                  |
+| TeamTailor ID    | `teamtailor-id`            | Same as job id                                            |
+| Description      | `description`              | Job body HTML from Teamtailor (falls back to pitch)       |
+| Min / Max salary | `min-salary`, `max-salary` | Numbers                                                   |
+| Currency         | `currency`                 | Plain text                                                |
 
 Override or extend with **`WEBFLOW_JOBS_FIELD_MAP`** if your API names differ.
 
@@ -64,14 +64,15 @@ Workflow: [`.github/workflows/sync-jobs.yml`](.github/workflows/sync-jobs.yml)
 
 - Cron: every 10 minutes (`*/10 * * * *`). GitHub Actions has a 5-min floor and deliveries can lag up to ~15 min under load.
 - Manual run: Actions → **Sync Teamtailor jobs to Webflow** → **Run workflow**.
+- If you do not want to wait for the next scheduled run, trigger the workflow manually from GitHub Actions: [Sync Teamtailor jobs to Webflow ](https://github.com/mirumee/mirumee-webflow-website-integrations-api/actions/runs/24664590885).
 - Optional input `skip_archive` on manual runs — keep Webflow items whose slug is no longer in Teamtailor.
 
 Required GitHub config (Settings → Secrets and variables → Actions):
 
-| Kind     | Name                | Value                                              |
-|----------|---------------------|----------------------------------------------------|
-| Secret   | `SYNC_JOBS_SECRET`  | Same value as `SYNC_JOBS_SECRET` in production env |
-| Variable | `SYNC_JOBS_URL`     | `https://<host>/app/api/sync-jobs`                 |
+| Kind     | Name               | Value                                              |
+| -------- | ------------------ | -------------------------------------------------- |
+| Secret   | `SYNC_JOBS_SECRET` | Same value as `SYNC_JOBS_SECRET` in production env |
+| Variable | `SYNC_JOBS_URL`    | `https://<host>/app/api/sync-jobs`                 |
 
 Behaviour:
 
@@ -144,9 +145,7 @@ Expected markup:
   <div data-job-offers-list></div>
 </div>
 
-<div data-job-offers-empty style="display:none;">
-  No open roles right now.
-</div>
+<div data-job-offers-empty style="display:none;">No open roles right now.</div>
 ```
 
 Then include:
