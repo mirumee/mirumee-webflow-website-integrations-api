@@ -207,6 +207,21 @@ async function archiveLiveItem(collectionId: string, itemId: string) {
       items: [{ id: itemId, isArchived: true }],
     }),
   });
+
+  if (res.status === 409) {
+    // Item was never published — fall back to archiving via the staging endpoint
+    const stagingRes = await webflowFetch(`/collections/${collectionId}/items`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        items: [{ id: itemId, isArchived: true }],
+      }),
+    });
+    if (!stagingRes.ok) {
+      throw new Error(`Webflow archive staging item ${stagingRes.status}: ${await stagingRes.text()}`);
+    }
+    return;
+  }
+
   if (!res.ok) {
     throw new Error(`Webflow archive item ${res.status}: ${await res.text()}`);
   }
