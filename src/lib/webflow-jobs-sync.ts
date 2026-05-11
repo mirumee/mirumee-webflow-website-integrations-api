@@ -127,18 +127,26 @@ async function webflowFetch(path: string, init: RequestInit): Promise<Response> 
 }
 
 export async function listAllItems(collectionId: string): Promise<WebflowItemRow[]> {
+  return listCollectionItems(`/collections/${collectionId}/items`);
+}
+
+async function listLiveItems(collectionId: string): Promise<WebflowItemRow[]> {
+  return listCollectionItems(`/collections/${collectionId}/items/live`);
+}
+
+async function listCollectionItems(path: string): Promise<WebflowItemRow[]> {
   const items: WebflowItemRow[] = [];
   let offset = 0;
   const limit = 100;
   let total = Infinity;
 
   while (offset < total) {
-    const res = await webflowFetch(
-      `/collections/${collectionId}/items?limit=${limit}&offset=${offset}`,
-      { method: "GET" },
-    );
+    const separator = path.includes("?") ? "&" : "?";
+    const res = await webflowFetch(`${path}${separator}limit=${limit}&offset=${offset}`, {
+      method: "GET",
+    });
     if (!res.ok) {
-      throw new Error(`Webflow list items ${res.status}: ${await res.text()}`);
+      throw new Error(`Webflow list collection items ${res.status}: ${await res.text()}`);
     }
     const body = (await res.json()) as ListResponse;
     items.push(...body.items);
@@ -241,7 +249,8 @@ export async function syncJobOffersToWebflow(
   }
 
   if (options.archiveMissing) {
-    for (const row of existing) {
+    const liveItems = await listLiveItems(collectionId);
+    for (const row of liveItems) {
       const slug = row.fieldData?.slug;
       if (!slug) continue;
       if (ttSlugs.has(slug)) continue;
