@@ -30,6 +30,6 @@
     "postcss-import": "^16.1.0",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "wrangler": "^4.11.1"
+    "wrangler": "^4.103.0"
   }
 }
