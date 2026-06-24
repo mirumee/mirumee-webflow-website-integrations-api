@@ -8,7 +8,7 @@ const CALENDAR_LINKS: Record<string, string> = {
   "25079049": "https://calendar.app.google/L3fY4xaEJ9C3RzFq5",
 };
 
-const DEFAULT_CALENDAR_LINK = "https://calendar.app.google/j9UF6htRL44FCMKL9";
+const DEFAULT_CALENDAR_LINK = "https://calendar.app.google/UKzornFSVfqTjpjH6";
 
 const DEFAULT_PIPEDRIVE_USER_ID = "24022103";
 
