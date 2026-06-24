@@ -4,6 +4,8 @@ import { getCorsHeaders } from "@/lib/cors";
 import { createPerson, createDeal, createNote } from "@/lib/pipedrive";
 import { appendContactToSheet } from "@/lib/google-sheets";
 
+const DEFAULT_PIPEDRIVE_USER_ID = "24022103";
+
 const contactFormSchema = z.object({
   name: z.string().min(1),
   email: z.string().email(),
@@ -15,10 +17,15 @@ const contactFormSchema = z.object({
     .transform((val) => (val != null ? String(val) : undefined)),
 });
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const origin = req.headers.origin as string | null ?? null;
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse,
+) {
+  const origin = (req.headers.origin as string | null) ?? null;
   const corsHeaders = getCorsHeaders(origin);
-  Object.entries(corsHeaders).forEach(([key, value]) => res.setHeader(key, value));
+  Object.entries(corsHeaders).forEach(([key, value]) =>
+    res.setHeader(key, value),
+  );
 
   if (req.method === "OPTIONS") {
     return res.status(204).end();
@@ -37,7 +44,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(201).json({ message: "success" });
     }
 
-    const defaultUserId = process.env.PIPEDRIVE_DEFAULT_USER_ID;
+    const defaultUserId = DEFAULT_PIPEDRIVE_USER_ID;
     const targetUserId = data.pipedriveUserId || defaultUserId;
 
     if (!targetUserId) {

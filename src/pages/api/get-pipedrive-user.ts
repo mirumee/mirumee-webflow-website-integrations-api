@@ -10,10 +10,17 @@ const CALENDAR_LINKS: Record<string, string> = {
 
 const DEFAULT_CALENDAR_LINK = "https://calendar.app.google/j9UF6htRL44FCMKL9";
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const origin = req.headers.origin as string | null ?? null;
+const DEFAULT_PIPEDRIVE_USER_ID = "24022103";
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse,
+) {
+  const origin = (req.headers.origin as string | null) ?? null;
   const corsHeaders = getCorsHeaders(origin);
-  Object.entries(corsHeaders).forEach(([key, value]) => res.setHeader(key, value));
+  Object.entries(corsHeaders).forEach(([key, value]) =>
+    res.setHeader(key, value),
+  );
 
   if (req.method === "OPTIONS") {
     return res.status(204).end();
@@ -25,11 +32,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const userId = req.query.userId as string | undefined;
-    const defaultUserId = process.env.PIPEDRIVE_DEFAULT_USER_ID;
+    const defaultUserId = DEFAULT_PIPEDRIVE_USER_ID;
 
     const targetId = userId || defaultUserId;
     if (!targetId) {
-      return res.status(400).json({ error: "No userId provided and no default configured" });
+      return res
+        .status(400)
+        .json({ error: "No userId provided and no default configured" });
     }
 
     const user = await fetchUser(targetId);
@@ -38,7 +47,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(404).json({ error: "User not found" });
     }
 
-    const calendarLink = CALENDAR_LINKS[String(user.id)] ?? DEFAULT_CALENDAR_LINK;
+    const calendarLink =
+      CALENDAR_LINKS[String(user.id)] ?? DEFAULT_CALENDAR_LINK;
 
     return res.status(200).json({
       id: user.id,
