@@ -153,3 +153,27 @@ Then include:
 ```html
 <script src="https://<your-cloud-domain>/job-offers.js"></script>
 ```
+
+## Analytics (`data-track`)
+
+`public/track.js` is loaded site-wide (Webflow → Site settings → Custom code → footer: `<script src="/app/track.js" defer></script>`). It sends GA4 events via the `gtag` from Webflow's Google integration.
+
+Tag a link or button in the Designer with custom attributes:
+
+| Attribute             | GA4                                | Example                    |
+| --------------------- | ---------------------------------- | -------------------------- |
+| `data-track`          | event name: `<value>_click` (`-` → `_`) | `case-study` → `case_study_click` |
+| `data-track-location` | param `track_location`             | `nav`, `footer`, `contact` |
+| `data-track-name`     | param `track_name`                 | `breitling`                |
+
+`link_url` is added from `href`. Links with `href="#"` are ignored. Only `<a>` and `<button>` are tracked — `data-track` on a wrapper `div` does nothing.
+
+Events in use:
+
+- `booking_click` — calendar link on `/contact`; `track_name` is the Pipedrive user ID (set by `contact-form.js`).
+- `cta_click`, `case_study_click` — nav/footer links.
+- `generate_lead` — sent by `contact-form.js` after a successful submit, with `lead_source=form` and `track_name` = Pipedrive user ID.
+
+Other scripts can send events with `window.mirumeeTrack(name, params)`. Never pass form contents (name, email, message).
+
+In GA4, register `track_location`, `track_name` and `lead_source` as event-scoped custom dimensions, and mark `booking_click` and `generate_lead` as key events.

@@ -31,6 +31,7 @@
         if (hiddenInput) hiddenInput.value = String(user.id);
         if (calendarEl && user.calendar_link) {
           calendarEl.href = user.calendar_link;
+          calendarEl.dataset.trackName = String(user.id);
           calendarEl.style.opacity = "1";
         }
         if (container) container.style.opacity = "1";
@@ -68,6 +69,13 @@
       .then(function (res) {
         if (!res.ok) throw new Error("Submission failed");
         const pipedriveUserId = formData.get("pipedriveUserId");
+        if (window.mirumeeTrack) {
+          window.mirumeeTrack("generate_lead", {
+            lead_source: "form",
+            track_location: "contact",
+            track_name: pipedriveUserId || undefined,
+          });
+        }
         const sentUrl = pipedriveUserId
           ? "/contact-sent?to=" + pipedriveUserId
           : "/contact-sent";
