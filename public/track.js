@@ -116,26 +116,151 @@
 
   // Clicks on <a>/<button> with data-track="foo-bar" send "foo_bar_click".
   // Params come from data-track-location, data-track-name and the link href.
+  // Elements inside Webflow Code Embeds (whose HTML we don't edit) are tagged
+  // by AUTO_TAGS below instead; explicit data-track attributes always win.
+
+  function slug(text) {
+    return (text || "")
+      .toLowerCase()
+      .replace(/['’]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+  }
+
+  function textName(prefix) {
+    return function (el) {
+      return prefix + slug(el.textContent);
+    };
+  }
+
+  // Rules for elements inside Code Embeds. `scope` is the `class` custom
+  // attribute set on every Code Embed of that page in Webflow; renaming or
+  // removing it there disables the page's rules.
+  const AUTO_TAGS = [
+    // /product-design
+    {
+      scope: "product-design",
+      sel: 'a[href*="calendar.app.google"]',
+      track: "booking",
+      location: "product-design",
+      name: "iwo-rzepiela",
+    },
+    {
+      scope: "product-design",
+      sel: "[data-acc-toggle]",
+      track: "expand",
+      location: "product-design",
+      name: "design-services",
+    },
+    {
+      scope: "product-design",
+      sel: 'a[href*="/contact"]',
+      track: "cta",
+      location: "product-design",
+      name: textName(""),
+    },
+    // /medtech-meetup
+    {
+      scope: "medtech-meetup",
+      sel: 'a[href="#register"]',
+      track: "register",
+      location: "hero",
+      name: "medtech-meetup",
+    },
+    // /case-study/prismavet chart toggles
+    {
+      scope: "case-study-prismavet",
+      sel: "[data-k]",
+      track: "chart-toggle",
+      location: "case-study",
+      name: textName(""),
+    },
+    // /case-study/butterfly-design step tabs
+    {
+      scope: "case-study-butterfly-design",
+      sel: "[data-tm-num]",
+      track: "tab",
+      location: "case-study",
+      name: textName("step-"),
+    },
+  ];
+
+  // /case-study/<slug>: links to the client's site.
+  [
+    "breitling",
+    "butterfly",
+    "lulu",
+    "rough-trade",
+    "spaya",
+    "butterfly-design",
+  ].forEach(function (caseSlug) {
+    AUTO_TAGS.push({
+      scope: "case-study-" + caseSlug,
+      sel: 'a[href^="http"]:not([href*="mirumee.com"])',
+      track: "outbound",
+      location: "case-study",
+      name: caseSlug,
+    });
+  });
+
+  // /case-study/<slug>: full-screen overlay controls.
+  ["butterfly-design", "extrarx", "homenow"].forEach(function (caseSlug) {
+    [
+      ["[data-close]", "case-study-close"],
+      ["[data-top]", "scroll-top"],
+      ["[data-home]", "case-study-home"],
+    ].forEach(function (rule) {
+      AUTO_TAGS.push({
+        scope: "case-study-" + caseSlug,
+        sel: rule[0],
+        track: rule[1],
+        location: "case-study",
+        name: caseSlug,
+      });
+    });
+  });
+
+  function resolveTag(target) {
+    const el = target.closest("a[data-track], button[data-track]");
+    if (el) {
+      return {
+        el: el,
+        track: el.dataset.track,
+        location: el.dataset.trackLocation,
+        name: el.dataset.trackName,
+      };
+    }
+    for (let i = 0; i < AUTO_TAGS.length; i++) {
+      const rule = AUTO_TAGS[i];
+      const match = target.closest("." + rule.scope + " " + rule.sel);
+      if (match) {
+        return {
+          el: match,
+          track: rule.track,
+          location: rule.location,
+          name: typeof rule.name === "function" ? rule.name(match) : rule.name,
+        };
+      }
+    }
+    return null;
+  }
+
   document.addEventListener(
     "click",
     function (e) {
-      const el =
-        e.target && e.target.closest
-          ? e.target.closest("a[data-track], button[data-track]")
-          : null;
-      if (!el) return;
+      const tag = e.target && e.target.closest ? resolveTag(e.target) : null;
+      if (!tag) return;
 
+      const el = tag.el;
       const href = el.getAttribute("href");
       if (el.tagName === "A" && (!href || href === "#")) return;
 
       const params = {};
-      if (el.dataset.trackLocation) {
-        params.track_location = el.dataset.trackLocation;
-      }
-      if (el.dataset.trackName) params.track_name = el.dataset.trackName;
+      if (tag.location) params.track_location = tag.location;
+      if (tag.name) params.track_name = tag.name;
       if (href) params.link_url = el.href;
 
-      track(el.dataset.track.replace(/-/g, "_") + "_click", params);
+      track(tag.track.replace(/-/g, "_") + "_click", params);
     },
     true,
   );

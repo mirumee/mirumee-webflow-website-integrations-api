@@ -6,6 +6,10 @@
   function loadPipedriveUser() {
     // Filled only after the API confirms the user; a raw ?to= may be invalid.
     const hiddenInput = document.getElementById("pipedrive-user-id");
+    // Landing-page forms have no salesperson widget; skip the lookup there.
+    if (!hiddenInput && !document.getElementById("contact-avatar-wrapper")) {
+      return;
+    }
 
     let endpoint = API_BASE + "/get-pipedrive-user";
     if (userId) endpoint += "?userId=" + userId;
@@ -39,7 +43,7 @@
       });
   }
 
-  function submitFormData(form) {
+  function submitFormData(form, location) {
     const formData = new FormData(form);
     const data = {
       name: formData.get("name"),
@@ -80,7 +84,7 @@
         if (window.mirumeeTrack) {
           window.mirumeeTrack("generate_lead", {
             lead_source: "form",
-            track_location: "contact",
+            track_location: location,
             track_name: pipedriveUserId || undefined,
             deal_id: dealId,
             transaction_id: dealId,
@@ -103,18 +107,29 @@
       });
   }
 
+  // Forms marked with data-lead-form="<location>" go to Pipedrive; the value
+  // is sent as track_location on generate_lead. Pages without the marker
+  // fall back to the single contact form.
   function setup() {
-    const form =
-      document.querySelector("[data-name='Contact Form']") ||
-      document.querySelector("form");
-    if (!form) return;
+    let forms = Array.prototype.slice.call(
+      document.querySelectorAll("form[data-lead-form]"),
+    );
+    if (forms.length === 0) {
+      const fallback =
+        document.querySelector("[data-name='Contact Form']") ||
+        document.querySelector("form");
+      if (fallback) forms = [fallback];
+    }
 
-    form.setAttribute("action", "javascript:void(0)");
+    forms.forEach(function (form) {
+      const location = form.dataset.leadForm || "contact";
+      form.setAttribute("action", "javascript:void(0)");
 
-    form.addEventListener("submit", function (e) {
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      submitFormData(form);
+      form.addEventListener("submit", function (e) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        submitFormData(form, location);
+      });
     });
   }
 

@@ -25,3 +25,18 @@ There are two Webflow Cloud apps for this repo:
 
 - Use `PIPEDRIVE_X_API_TOKEN` from `.env.local` for Pipedrive API calls. Never print it.
 - Deal attribution custom fields are mapped through the `PIPEDRIVE_FIELD_*` env vars (see `src/lib/pipedrive.ts` `ATTRIBUTION_FIELD_ENV`). The fields are varchar, so values are truncated to 255 characters.
+
+## Tracking (GA4)
+
+`public/track.js` and `public/contact-form.js` are served from `/app/` and loaded by the Webflow site (`track.js` in site footer code, `contact-form.js` in page footer code of each page with a lead form).
+
+- **Click events:** `<a>`/`<button>` with `data-track="foo-bar"` sends `foo_bar_click` with `track_location` (`data-track-location`), `track_name` (`data-track-name`) and `link_url`. Set these as custom attributes in the Webflow Designer.
+- **Code Embeds:** elements inside HTML Embeds are tagged by the `AUTO_TAGS` rules in `public/track.js`, not in the embed HTML. Each rule is scoped to a page class: the custom attribute `class` set on **every** Code Embed of that page in Webflow (it renders as `class="w-embed <page>"`). Renaming or removing that attribute silently disables the page's rules.
+
+  | Page | Embed `class` |
+  | --- | --- |
+  | /product-design | `product-design` |
+  | /case-study/&lt;slug&gt; | `case-study-<slug>` (breitling, butterfly, lulu, rough-trade, spaya, butterfly-design, extrarx, homenow, prismavet) |
+
+  For a new HTML page: add the `class` attribute to its embeds, then add rules to `AUTO_TAGS`. Check the class name doesn't match an existing Webflow style.
+- **Lead forms:** a `<form data-lead-form="<location>">` on a page that loads `/app/contact-form.js` is submitted to `/app/api/submit-contact-form` (Pipedrive), and `generate_lead` is sent with `track_location=<location>` and `deal_id`. Current forms: `contact`, `health-data-ai`, `saleor`, `saleor-enterprise`.

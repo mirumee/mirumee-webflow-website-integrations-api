@@ -26,7 +26,7 @@ function apiUrl(path: string): string {
 export const CALENDAR_LINKS: Record<string, string> = {
   "24022103": "https://calendar.app.google/UKzornFSVfqTjpjH6",
   "17062690": "https://calendar.app.google/fF41H84PgsiTZ2Jm8",
-  "25079049": "https://calendar.app.google/L3fY4xaEJ9C3RzFq5",
+  "25079049": "https://calendar.app.google/APmqv3rrKv7u5SbSA",
 };
 
 export const DEFAULT_CALENDAR_LINK = "https://calendar.app.google/UKzornFSVfqTjpjH6";
