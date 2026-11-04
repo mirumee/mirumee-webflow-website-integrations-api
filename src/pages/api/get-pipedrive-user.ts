@@ -10,8 +10,6 @@ const CALENDAR_LINKS: Record<string, string> = {
 
 const DEFAULT_CALENDAR_LINK = "https://calendar.app.google/UKzornFSVfqTjpjH6";
 
-const DEFAULT_PIPEDRIVE_USER_ID = "24022103";
-
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse,
@@ -32,7 +30,7 @@ export default async function handler(
 
   try {
     const userId = req.query.userId as string | undefined;
-    const defaultUserId = DEFAULT_PIPEDRIVE_USER_ID;
+    const defaultUserId = process.env.PIPEDRIVE_DEFAULT_USER_ID;
 
     const targetId = userId || defaultUserId;
     if (!targetId) {

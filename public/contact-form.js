@@ -49,6 +49,9 @@
       phone: formData.get("phone") || undefined,
       message: formData.get("message"),
       pipedriveUserId: formData.get("pipedriveUserId") || undefined,
+      attribution: window.mirumeeAttribution
+        ? window.mirumeeAttribution()
+        : undefined,
     };
 
     const submitBtn = form.querySelector("input[type='submit']");
@@ -68,12 +71,21 @@
     })
       .then(function (res) {
         if (!res.ok) throw new Error("Submission failed");
+        return res.json().catch(function () {
+          return {};
+        });
+      })
+      .then(function (result) {
         const pipedriveUserId = formData.get("pipedriveUserId");
+        const dealId =
+          result && result.dealId ? String(result.dealId) : undefined;
         if (window.mirumeeTrack) {
           window.mirumeeTrack("generate_lead", {
             lead_source: "form",
             track_location: "contact",
             track_name: pipedriveUserId || undefined,
+            deal_id: dealId,
+            transaction_id: dealId,
           });
         }
         const sentUrl = pipedriveUserId

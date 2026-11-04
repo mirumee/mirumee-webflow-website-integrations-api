@@ -54,9 +54,12 @@ interface CreateDealParams {
   message: string;
   userId: string;
   personId: number;
+  customFields?: Record<string, string>;
 }
 
-export async function createDeal({ name, email, message, userId, personId }: CreateDealParams) {
+const WEB_FORMS_CHANNEL_ID = 99;
+
+export async function createDeal({ name, email, message, userId, personId, customFields }: CreateDealParams) {
   const response = await fetch(apiUrl("/deals"), {
     method: "POST",
     headers: JSON_HEADERS,
@@ -65,12 +68,66 @@ export async function createDeal({ name, email, message, userId, personId }: Cre
       value: message,
       user_id: userId,
       person_id: personId,
+      channel: WEB_FORMS_CHANNEL_ID,
+      ...customFields,
     }),
   });
 
   const json: PipedriveResponse<PipedriveEntity> = await response.json();
   if (!response.ok) throw new Error(`Pipedrive createDeal failed: ${JSON.stringify(json)}`);
   return json.data;
+}
+
+export interface Attribution {
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  utm_term?: string;
+  utm_content?: string;
+  gclid?: string;
+  gbraid?: string;
+  wbraid?: string;
+  landing_page?: string;
+  referrer?: string;
+  ga_client_id?: string;
+  ga_session_id?: string;
+}
+
+// Attribution key -> env var holding the Pipedrive deal custom field key.
+const ATTRIBUTION_FIELD_ENV: Partial<Record<keyof Attribution, string>> = {
+  ga_client_id: "PIPEDRIVE_FIELD_GA_CLIENT_ID",
+  utm_source: "PIPEDRIVE_FIELD_UTM_SOURCE",
+  utm_medium: "PIPEDRIVE_FIELD_UTM_MEDIUM",
+  utm_campaign: "PIPEDRIVE_FIELD_UTM_CAMPAIGN",
+  utm_term: "PIPEDRIVE_FIELD_UTM_TERM",
+  utm_content: "PIPEDRIVE_FIELD_UTM_CONTENT",
+  gclid: "PIPEDRIVE_FIELD_GCLID",
+  landing_page: "PIPEDRIVE_FIELD_LANDING_PAGE",
+  referrer: "PIPEDRIVE_FIELD_REFERRER",
+};
+
+export function attributionToDealFields(attribution?: Attribution): Record<string, string> {
+  const fields: Record<string, string> = {};
+  if (!attribution) return fields;
+  for (const [attrKey, envName] of Object.entries(ATTRIBUTION_FIELD_ENV)) {
+    const fieldKey = process.env[envName];
+    const value = attribution[attrKey as keyof Attribution];
+    // Pipedrive varchar fields reject values longer than 255 chars.
+    if (fieldKey && value) fields[fieldKey] = value.slice(0, 255);
+  }
+  return fields;
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+export function formatAttributionNote(attribution?: Attribution): string {
+  if (!attribution) return "";
+  const lines = Object.entries(attribution)
+    .filter(([, value]) => value)
+    .map(([key, value]) => `${key}: ${escapeHtml(value)}`);
+  return lines.length ? `<br><br><b>Attribution</b><br>${lines.join("<br>")}` : "";
 }
 
 interface CreateNoteParams {
