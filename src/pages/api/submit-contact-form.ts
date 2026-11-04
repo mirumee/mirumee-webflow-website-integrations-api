@@ -2,7 +2,6 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 import { getCorsHeaders } from "@/lib/cors";
 import { createPerson, createDeal, createNote } from "@/lib/pipedrive";
-import { appendContactToSheet } from "@/lib/google-sheets";
 
 const DEFAULT_PIPEDRIVE_USER_ID = "24022103";
 
@@ -38,11 +37,6 @@ export default async function handler(
   try {
     const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
     const data = contactFormSchema.parse(body);
-
-    if (data.email.toLowerCase().endsWith("@gmail.com")) {
-      await appendContactToSheet(data);
-      return res.status(201).json({ message: "success" });
-    }
 
     const defaultUserId = DEFAULT_PIPEDRIVE_USER_ID;
     const targetUserId = data.pipedriveUserId || defaultUserId;
