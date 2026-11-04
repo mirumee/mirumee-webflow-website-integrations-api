@@ -5,6 +5,8 @@ import {
   createPerson,
   createDeal,
   createNote,
+  findPersonByEmail,
+  isKnownSalesUser,
   attributionToDealFields,
   formatAttributionNote,
 } from "@/lib/pipedrive";
@@ -41,6 +43,19 @@ const contactFormSchema = z.object({
   attribution: attributionSchema,
 });
 
+// Cloudflare sends the visitor's city as raw UTF-8 bytes, which can reach us
+// decoded as latin1 ("WrocÅ\x82aw"). Re-decode those back to UTF-8.
+function getVisitorCity(req: NextApiRequest): string | undefined {
+  const raw = req.headers["cf-ipcity"] ?? req.headers["x-wf-geo-city"];
+  const value = (Array.isArray(raw) ? raw[0] : raw)?.trim();
+  if (!value) return undefined;
+  if (/[\u0080-\u00ff]/.test(value) && !/[^\u0000-\u00ff]/.test(value)) {
+    const decoded = Buffer.from(value, "latin1").toString("utf8");
+    if (!decoded.includes("\ufffd")) return decoded.slice(0, 100);
+  }
+  return value.slice(0, 100);
+}
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse,
@@ -61,32 +76,45 @@ export default async function handler(
 
   try {
     const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
-    const data = contactFormSchema.parse(body);
+    const parsed = contactFormSchema.safeParse(body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Invalid input" });
+    }
+    const data = parsed.data;
 
+    // Only route to known salespeople; a stale or tampered ?to= falls back
+    // to the default user instead of failing the deal.
     const defaultUserId = process.env.PIPEDRIVE_DEFAULT_USER_ID;
-    const targetUserId = data.pipedriveUserId || defaultUserId;
+    const targetUserId = isKnownSalesUser(data.pipedriveUserId)
+      ? data.pipedriveUserId
+      : defaultUserId;
 
     if (!targetUserId) {
       return res.status(500).json({ error: "No Pipedrive user ID available" });
     }
 
-    const person = await createPerson({
-      name: data.name,
-      email: data.email,
-      phone: data.phone,
-    });
+    const city = getVisitorCity(req);
+    const attribution = city ? { ...data.attribution, city } : data.attribution;
+
+    const person =
+      (await findPersonByEmail(data.email)) ??
+      (await createPerson({
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+      }));
 
     const deal = await createDeal({
       name: data.name,
       email: data.email,
-      message: data.message,
+      message: city ? `${data.message}\n\nCity: ${city}` : data.message,
       userId: targetUserId,
       personId: person.id,
-      customFields: attributionToDealFields(data.attribution),
+      customFields: attributionToDealFields(attribution),
     });
 
     await createNote({
-      message: data.message + formatAttributionNote(data.attribution),
+      message: data.message + formatAttributionNote(attribution),
       dealId: deal.id,
       personId: person.id,
       userId: targetUserId,

@@ -17,7 +17,22 @@ function getApiToken(): string {
 }
 
 function apiUrl(path: string): string {
-  return `${PIPEDRIVE_BASE}${path}?api_token=${getApiToken()}`;
+  const separator = path.includes("?") ? "&" : "?";
+  return `${PIPEDRIVE_BASE}${path}${separator}api_token=${getApiToken()}`;
+}
+
+// Pipedrive user ID -> booking link. Also the list of salespeople a lead can
+// be routed to via ?to= on /contact.
+export const CALENDAR_LINKS: Record<string, string> = {
+  "24022103": "https://calendar.app.google/UKzornFSVfqTjpjH6",
+  "17062690": "https://calendar.app.google/fF41H84PgsiTZ2Jm8",
+  "25079049": "https://calendar.app.google/L3fY4xaEJ9C3RzFq5",
+};
+
+export const DEFAULT_CALENDAR_LINK = "https://calendar.app.google/UKzornFSVfqTjpjH6";
+
+export function isKnownSalesUser(userId: string | undefined): userId is string {
+  return !!userId && Object.prototype.hasOwnProperty.call(CALENDAR_LINKS, userId);
 }
 
 const JSON_HEADERS = {
@@ -31,6 +46,23 @@ interface CreatePersonParams {
   phone?: string;
 }
 
+interface PersonSearchResponse {
+  success: boolean;
+  data: { items: { item: PipedriveEntity }[] } | null;
+}
+
+export async function findPersonByEmail(email: string): Promise<PipedriveEntity | null> {
+  const query = new URLSearchParams({ term: email, fields: "email", exact_match: "true" });
+  const response = await fetch(apiUrl(`/persons/search?${query}`), {
+    method: "GET",
+    headers: { Accept: "application/json" },
+  });
+
+  const json: PersonSearchResponse = await response.json();
+  if (!response.ok) throw new Error(`Pipedrive findPersonByEmail failed: ${JSON.stringify(json)}`);
+  return json.data?.items[0]?.item ?? null;
+}
+
 export async function createPerson({ name, email, phone }: CreatePersonParams) {
   const response = await fetch(apiUrl("/persons"), {
     method: "POST",
@@ -38,7 +70,7 @@ export async function createPerson({ name, email, phone }: CreatePersonParams) {
     body: JSON.stringify({
       name,
       email: [{ value: email, primary: true, label: "Work" }],
-      phone: [{ value: phone ?? "", primary: true, label: "Work" }],
+      ...(phone ? { phone: [{ value: phone, primary: true, label: "Work" }] } : {}),
       label: "109",
     }),
   });
@@ -57,6 +89,12 @@ interface CreateDealParams {
   customFields?: Record<string, string>;
 }
 
+// Pipedrive "Message" deal field (long text). Unset = message only in the note.
+function messageField(message: string): Record<string, string> {
+  const fieldKey = process.env.PIPEDRIVE_FIELD_MESSAGE;
+  return fieldKey ? { [fieldKey]: message } : {};
+}
+
 const WEB_FORMS_CHANNEL_ID = 99;
 
 export async function createDeal({ name, email, message, userId, personId, customFields }: CreateDealParams) {
@@ -65,10 +103,10 @@ export async function createDeal({ name, email, message, userId, personId, custo
     headers: JSON_HEADERS,
     body: JSON.stringify({
       title: `${name} (${email})`,
-      value: message,
       user_id: userId,
       person_id: personId,
       channel: WEB_FORMS_CHANNEL_ID,
+      ...messageField(message),
       ...customFields,
     }),
   });
@@ -91,6 +129,8 @@ export interface Attribution {
   referrer?: string;
   ga_client_id?: string;
   ga_session_id?: string;
+  // Set server-side from the request's geo headers, not by the client.
+  city?: string;
 }
 
 // Attribution key -> env var holding the Pipedrive deal custom field key.

@@ -1,14 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getCorsHeaders } from "@/lib/cors";
-import { fetchUser } from "@/lib/pipedrive";
-
-const CALENDAR_LINKS: Record<string, string> = {
-  "24022103": "https://calendar.app.google/UKzornFSVfqTjpjH6",
-  "17062690": "https://calendar.app.google/fF41H84PgsiTZ2Jm8",
-  "25079049": "https://calendar.app.google/L3fY4xaEJ9C3RzFq5",
-};
-
-const DEFAULT_CALENDAR_LINK = "https://calendar.app.google/UKzornFSVfqTjpjH6";
+import {
+  fetchUser,
+  isKnownSalesUser,
+  CALENDAR_LINKS,
+  DEFAULT_CALENDAR_LINK,
+} from "@/lib/pipedrive";
 
 export default async function handler(
   req: NextApiRequest,
@@ -32,7 +29,7 @@ export default async function handler(
     const userId = req.query.userId as string | undefined;
     const defaultUserId = process.env.PIPEDRIVE_DEFAULT_USER_ID;
 
-    const targetId = userId || defaultUserId;
+    const targetId = isKnownSalesUser(userId) ? userId : defaultUserId;
     if (!targetId) {
       return res
         .status(400)

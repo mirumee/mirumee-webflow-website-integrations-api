@@ -4,10 +4,8 @@
   const userId = params.get("to");
 
   function loadPipedriveUser() {
+    // Filled only after the API confirms the user; a raw ?to= may be invalid.
     const hiddenInput = document.getElementById("pipedrive-user-id");
-    if (hiddenInput && userId) {
-      hiddenInput.value = userId;
-    }
 
     let endpoint = API_BASE + "/get-pipedrive-user";
     if (userId) endpoint += "?userId=" + userId;
