@@ -2,6 +2,56 @@
   const API_BASE = "/app/api";
   const params = new URLSearchParams(window.location.search);
   const userId = params.get("to");
+  const RECAPTCHA_ACTION = "submit_contact_form";
+  let recaptchaSiteKey = null;
+
+  // Loads reCAPTCHA v3 with the site key from the API, so the key lives only
+  // in env vars.
+  function loadRecaptcha() {
+    fetch(API_BASE + "/recaptcha-config")
+      .then(function (res) {
+        if (!res.ok) throw new Error("Failed to fetch reCAPTCHA config");
+        return res.json();
+      })
+      .then(function (config) {
+        if (!config.siteKey) return;
+        recaptchaSiteKey = config.siteKey;
+        const script = document.createElement("script");
+        script.src =
+          "https://www.google.com/recaptcha/api.js?render=" +
+          encodeURIComponent(config.siteKey);
+        script.async = true;
+        document.head.appendChild(script);
+      })
+      .catch(function (err) {
+        console.error("reCAPTCHA load error:", err);
+      });
+  }
+
+  // Resolves with a fresh token (they expire after 2 min), or undefined if
+  // reCAPTCHA isn't available; the API then decides whether to accept.
+  function getRecaptchaToken() {
+    if (!recaptchaSiteKey || !window.grecaptcha) {
+      return Promise.resolve(undefined);
+    }
+    return new Promise(function (resolve) {
+      const timeout = setTimeout(function () {
+        resolve(undefined);
+      }, 5000);
+      window.grecaptcha.ready(function () {
+        window.grecaptcha
+          .execute(recaptchaSiteKey, { action: RECAPTCHA_ACTION })
+          .then(function (token) {
+            clearTimeout(timeout);
+            resolve(token);
+          })
+          .catch(function () {
+            clearTimeout(timeout);
+            resolve(undefined);
+          });
+      });
+    });
+  }
 
   function loadPipedriveUser() {
     // Filled only after the API confirms the user; a raw ?to= may be invalid.
@@ -66,11 +116,15 @@
     const errorEl = form.parentElement.querySelector(".w-form-fail");
     if (errorEl) errorEl.style.display = "none";
 
-    fetch(API_BASE + "/submit-contact-form", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    })
+    getRecaptchaToken()
+      .then(function (token) {
+        data.recaptchaToken = token;
+        return fetch(API_BASE + "/submit-contact-form", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+      })
       .then(function (res) {
         if (!res.ok) throw new Error("Submission failed");
         return res.json().catch(function () {
@@ -120,6 +174,7 @@
         document.querySelector("form");
       if (fallback) forms = [fallback];
     }
+    if (forms.length > 0) loadRecaptcha();
 
     forms.forEach(function (form) {
       const location = form.dataset.leadForm || "contact";

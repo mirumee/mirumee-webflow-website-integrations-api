@@ -40,3 +40,4 @@ There are two Webflow Cloud apps for this repo:
 
   For a new HTML page: add the `class` attribute to its embeds, then add rules to `AUTO_TAGS`. Check the class name doesn't match an existing Webflow style.
 - **Lead forms:** a `<form data-lead-form="<location>">` on a page that loads `/app/contact-form.js` is submitted to `/app/api/submit-contact-form` (Pipedrive), and `generate_lead` is sent with `track_location=<location>` and `deal_id`. Current forms: `contact`, `health-data-ai`, `saleor`, `saleor-enterprise`.
+- **reCAPTCHA v3:** `contact-form.js` gets the site key from `/app/api/recaptcha-config` and sends a token (action `submit_contact_form`) with each submission; the API rejects missing/low-score tokens (`RECAPTCHA_MIN_SCORE`, default 0.5). Verification is skipped when `RECAPTCHA_SECRET_KEY` is unset (local dev).

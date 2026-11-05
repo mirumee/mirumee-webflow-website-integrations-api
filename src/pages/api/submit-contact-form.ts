@@ -10,6 +10,7 @@ import {
   attributionToDealFields,
   formatAttributionNote,
 } from "@/lib/pipedrive";
+import { verifyRecaptcha } from "@/lib/recaptcha";
 
 const attrValue = z.string().max(500).optional().catch(undefined);
 
@@ -41,6 +42,7 @@ const contactFormSchema = z.object({
     .optional()
     .transform((val) => (val != null ? String(val) : undefined)),
   attribution: attributionSchema,
+  recaptchaToken: z.string().max(4000).optional(),
 });
 
 // Cloudflare sends the visitor's city as raw UTF-8 bytes, which can reach us
@@ -81,6 +83,12 @@ export default async function handler(
       return res.status(400).json({ error: "Invalid input" });
     }
     const data = parsed.data;
+
+    const ip = req.headers["cf-connecting-ip"];
+    const remoteIp = Array.isArray(ip) ? ip[0] : ip;
+    if (!(await verifyRecaptcha(data.recaptchaToken, remoteIp))) {
+      return res.status(400).json({ error: "reCAPTCHA failed" });
+    }
 
     // Only route to known salespeople; a stale or tampered ?to= falls back
     // to the default user instead of failing the deal.
